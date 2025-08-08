@@ -3,3 +3,7 @@ node_modules
 build
 .env
 .env
+node_modules
+.env
+build
+
