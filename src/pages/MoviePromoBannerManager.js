@@ -1,3 +1,4 @@
+// src/pages/MoviePromoBannerManager.js
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 
@@ -33,7 +34,6 @@ export default function MoviePromoBannerManager() {
     fetchBanners();
   }, []);
 
-  // convert "12k"/"1.2m"/"12,345" → number
   const parseVotes = (v) => {
     const s = String(v ?? '').trim().toLowerCase();
     if (!s) return 0;
@@ -54,17 +54,15 @@ export default function MoviePromoBannerManager() {
     const votesNum = parseVotes(votes);
 
     const formData = new FormData();
-    formData.append('poster', poster);                 // <-- must match multer.single('poster')
-    formData.append('rating', String(ratingNum));      // send as strings
+    formData.append('poster', poster);
+    formData.append('rating', String(ratingNum));
     formData.append('votes', String(votesNum));
     formData.append('enabled', 'true');
     formData.append('sortIndex', '0');
     formData.append('category', category);
 
     try {
-      const res = await api.post('/api/movie-banners', formData/* let axios set boundary */);
-      if (!(res.status >= 200 && res.status < 300)) throw new Error(`Bad status ${res.status}`);
-      // reset
+      await api.post('/api/movie-banners', formData);
       setPoster(null);
       setRating('');
       setVotes('');
@@ -87,37 +85,17 @@ export default function MoviePromoBannerManager() {
     }
   };
 
+  const srcFor = (p) => (p?.startsWith('http') ? p : `${API_BASE}${p}`);
+
   return (
     <div className="p-4 text-white">
       <h2 className="text-xl font-bold mb-4">🎬 Movie Promo Banners</h2>
 
       <form onSubmit={handleSubmit} className="mb-4 flex gap-2 flex-wrap items-center">
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setPoster(e.target.files[0])}
-          className="p-2 bg-gray-700"
-        />
-        <input
-          className="p-2 bg-gray-700"
-          placeholder="Rating (0–10)"
-          value={rating}
-          onChange={(e) => setRating(e.target.value)}
-          type="number"
-          step="0.1"
-          min="0" max="10"
-        />
-        <input
-          className="p-2 bg-gray-700"
-          placeholder="Votes (e.g. 12k or 12000)"
-          value={votes}
-          onChange={(e) => setVotes(e.target.value)}
-        />
-        <select
-          className="p-2 bg-gray-700"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-        >
+        <input type="file" accept="image/*" onChange={(e) => setPoster(e.target.files[0])} className="p-2 bg-gray-700" />
+        <input className="p-2 bg-gray-700" placeholder="Rating (0–10)" value={rating} onChange={(e) => setRating(e.target.value)} type="number" step="0.1" />
+        <input className="p-2 bg-gray-700" placeholder="Votes (e.g. 12k or 12000)" value={votes} onChange={(e) => setVotes(e.target.value)} />
+        <select className="p-2 bg-gray-700" value={category} onChange={(e) => setCategory(e.target.value)}>
           <option value="Trending Now">Trending Now</option>
           <option value="Top Rated">Top Rated</option>
           <option value="Coming Soon">Coming Soon</option>
@@ -128,15 +106,11 @@ export default function MoviePromoBannerManager() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {(Array.isArray(banners) ? banners : []).map((b) => (
           <div key={b._id} className="bg-black rounded p-2">
-            <img src={b.posterUrl} alt="Banner" className="rounded" />
+            {/* ✅ prefix with API_BASE so it loads from the backend, not Vercel */}
+            <img src={srcFor(b.posterUrl)} alt="Banner" className="rounded" />
             <p className="text-sm mt-2">⭐ {b.rating} • {b.votes?.toLocaleString?.() ?? b.votes}</p>
             <p className="text-xs text-gray-400 italic">{b.category}</p>
-            <button
-              onClick={() => handleDelete(b._id)}
-              className="text-red-500 text-xs mt-1"
-            >
-              Delete
-            </button>
+            <button onClick={() => handleDelete(b._id)} className="text-red-500 text-xs mt-1">Delete</button>
           </div>
         ))}
       </div>
