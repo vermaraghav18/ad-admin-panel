@@ -44,11 +44,14 @@ const MovieList = ({ movies, onRefresh }) => {
             color: 'white',
           }}
         >
+          {/* ✅ If posterUrl is already a full http(s) URL (Cloudinary), use it directly.
+              Otherwise, prefix with API_BASE for any server-hosted relative paths. */}
           <img
-            src={`${API_BASE}${movie.posterUrl}`}
+            src={movie.posterUrl?.startsWith('http') ? movie.posterUrl : `${API_BASE}${movie.posterUrl}`}
             alt={movie.title}
             style={{ height: 100 }}
           />
+
           <div>
             <strong>{movie.title}</strong> ({movie.type})
           </div>
