@@ -2,7 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 
-const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5000';
+const API_BASE = process.env.REACT_APP_API_BASE || 'https://ad-server-qx62.onrender.com';
+
 const api = axios.create({ baseURL: API_BASE });
 
 export default function MoviePromoBannerManager() {

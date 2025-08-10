@@ -132,7 +132,7 @@ function AdManager() {
       <div className="ads">
         {ads.map(ad => (
           <div key={ad.id} className="ad">
-            <img src={`${API_BASE}${ad.imageUrl}`} alt={ad.title || 'Ad image'} />
+            <img src={ad.imageUrl?.startsWith('http') ? ad.imageUrl : `${API_BASE}${ad.imageUrl}`} alt={ad.title || 'Ad image'} />
             <h3>{ad.title || '—'}</h3>
             <p><em>{ad.description || '—'}</em></p>
             <p>{ad.link}</p>
