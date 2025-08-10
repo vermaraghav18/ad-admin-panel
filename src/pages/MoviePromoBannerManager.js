@@ -25,13 +25,23 @@ export default function MoviePromoBannerManager() {
       setBanners(arr);
     } catch (error) {
       console.error('❌ Failed to fetch banners:', error);
-      setBanners([]); // keep it an array so render never crashes
+      setBanners([]);
     }
   };
 
   useEffect(() => {
     fetchBanners();
   }, []);
+
+  // convert "12k"/"1.2m"/"12,345" → number
+  const parseVotes = (v) => {
+    const s = String(v ?? '').trim().toLowerCase();
+    if (!s) return 0;
+    if (s.endsWith('k')) return Math.round(parseFloat(s) * 1_000);
+    if (s.endsWith('m')) return Math.round(parseFloat(s) * 1_000_000);
+    const n = parseInt(s.replace(/[, ]/g, ''), 10);
+    return Number.isNaN(n) ? 0 : n;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -40,18 +50,20 @@ export default function MoviePromoBannerManager() {
       return;
     }
 
+    const ratingNum = Number(parseFloat(rating).toFixed(1));
+    const votesNum = parseVotes(votes);
+
     const formData = new FormData();
-    formData.append('poster', poster);
-    formData.append('rating', parseFloat(rating));
-    formData.append('votes', votes);
-    formData.append('enabled', true);
-    formData.append('sortIndex', 0);
+    formData.append('poster', poster);                 // <-- must match multer.single('poster')
+    formData.append('rating', String(ratingNum));      // send as strings
+    formData.append('votes', String(votesNum));
+    formData.append('enabled', 'true');
+    formData.append('sortIndex', '0');
     formData.append('category', category);
 
     try {
-      await api.post('/api/movie-banners', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const res = await api.post('/api/movie-banners', formData/* let axios set boundary */);
+      if (!(res.status >= 200 && res.status < 300)) throw new Error(`Bad status ${res.status}`);
       // reset
       setPoster(null);
       setRating('');
@@ -59,8 +71,10 @@ export default function MoviePromoBannerManager() {
       setCategory('Trending Now');
       fetchBanners();
     } catch (error) {
-      console.error('❌ Upload failed:', error);
-      alert('Upload failed: ' + (error.response?.data?.message || 'Unknown error'));
+      const status = error?.response?.status;
+      const data = error?.response?.data;
+      console.error('❌ Upload failed:', { status, data, error });
+      alert(`Upload failed: ${status ?? 'network'} ${data?.message || data?.error || ''}`.trim());
     }
   };
 
@@ -86,15 +100,16 @@ export default function MoviePromoBannerManager() {
         />
         <input
           className="p-2 bg-gray-700"
-          placeholder="Rating"
+          placeholder="Rating (0–10)"
           value={rating}
           onChange={(e) => setRating(e.target.value)}
           type="number"
           step="0.1"
+          min="0" max="10"
         />
         <input
           className="p-2 bg-gray-700"
-          placeholder="Votes (e.g. 122K)"
+          placeholder="Votes (e.g. 12k or 12000)"
           value={votes}
           onChange={(e) => setVotes(e.target.value)}
         />
@@ -114,7 +129,7 @@ export default function MoviePromoBannerManager() {
         {(Array.isArray(banners) ? banners : []).map((b) => (
           <div key={b._id} className="bg-black rounded p-2">
             <img src={b.posterUrl} alt="Banner" className="rounded" />
-            <p className="text-sm mt-2">⭐ {b.rating} • {b.votes}</p>
+            <p className="text-sm mt-2">⭐ {b.rating} • {b.votes?.toLocaleString?.() ?? b.votes}</p>
             <p className="text-xs text-gray-400 italic">{b.category}</p>
             <button
               onClick={() => handleDelete(b._id)}
