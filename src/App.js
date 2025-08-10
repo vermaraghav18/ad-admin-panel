@@ -130,17 +130,23 @@ function AdManager() {
       </form>
 
       <div className="ads">
-        {ads.map(ad => (
-          <div key={ad.id} className="ad">
-            <img src={ad.imageUrl?.startsWith('http') ? ad.imageUrl : `${API_BASE}${ad.imageUrl}`} alt={ad.title || 'Ad image'} />
-            <h3>{ad.title || '—'}</h3>
-            <p><em>{ad.description || '—'}</em></p>
-            <p>{ad.link}</p>
-            <p><strong>🎯 Target:</strong> {ad.target || 'All'}</p>
-            <p><strong>📐 Type:</strong> {ad.type || 'normal'}</p>
-            <button onClick={() => handleDelete(ad.id)}>❌ Delete</button>
-          </div>
-        ))}
+        {ads.map(ad => {
+          const id = ad._id || ad.id; // ✅ normalize id for delete/key
+          return (
+            <div key={id} className="ad">
+              <img
+                src={ad.imageUrl?.startsWith('http') ? ad.imageUrl : `${API_BASE}${ad.imageUrl}`}
+                alt={ad.title || 'Ad image'}
+              />
+              <h3>{ad.title || '—'}</h3>
+              <p><em>{ad.description || '—'}</em></p>
+              <p>{ad.link}</p>
+              <p><strong>🎯 Target:</strong> {ad.target || 'All'}</p>
+              <p><strong>📐 Type:</strong> {ad.type || 'normal'}</p>
+              <button onClick={() => handleDelete(id)}>❌ Delete</button>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
