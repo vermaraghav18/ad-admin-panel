@@ -6,6 +6,7 @@ import MoviePromoBannerManager from './pages/MoviePromoBannerManager';
 import FeedManager from './components/FeedManager'; // ✅ Feeds
 import ShortsManagerPage from './pages/ShortsManagerPage'; // ✅ Shorts
 import TweetsManagerPage from './pages/TweetsManagerPage'; // ✅ Tweets
+import CustomNewsManagerPage from './pages/CustomNewsManagerPage';
 import './App.css';
 
 // ✅ Centralized API base (env first, then Render fallback)
@@ -174,6 +175,7 @@ function App() {
           <Route path="/shorts" element={<ShortsManagerPage />} />
           <Route path="/tweets" element={<TweetsManagerPage />} />
           <Route path="/feeds" element={<FeedManager />} />
+          <Route path="/custom-news" element={<CustomNewsManagerPage/>} />
           <Route path="*" element={<AdManager />} />
         </Routes>
       </div>
