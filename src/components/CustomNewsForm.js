@@ -3,6 +3,12 @@ import NewsPreviewCard from './NewsPreviewCard';
 
 const isUrl = (s='') => /^https?:\/\/\S+/i.test(s);
 
+// 👇 SAME pattern as App.js (env first, then fallback)
+const API_BASE = process.env.REACT_APP_API_BASE || 'https://ad-server-qx62.onrender.com';
+
+// If you mounted extract under /api/custom-news/extract (Option B), set this to true:
+const EXTRACT_UNDER_CUSTOM_NEWS = false; // <-- change to true if you used Option B
+
 export default function CustomNewsForm({ onSaved, initial }) {
   const [mode, setMode] = useState('manual'); // 'manual' | 'link'
   const [linkUrl, setLinkUrl] = useState('');
@@ -26,13 +32,25 @@ export default function CustomNewsForm({ onSaved, initial }) {
     if (!isUrl(linkUrl)) { setError('Please enter a valid http(s) URL.'); return; }
     try {
       setExtracting(true);
-      const res = await fetch('/api/extract', {
+      const extractUrl = EXTRACT_UNDER_CUSTOM_NEWS
+        ? `${API_BASE}/api/custom-news/extract`
+        : `${API_BASE}/api/extract`;
+
+      const res = await fetch(extractUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: linkUrl }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to extract');
+
+      // Guard against HTML error pages
+      const contentType = res.headers.get('content-type') || '';
+      const maybeText = await res.text();
+      const data = contentType.includes('application/json')
+        ? JSON.parse(maybeText)
+        : { error: maybeText };
+
+      if (!res.ok) throw new Error(data.error || `Failed to extract (${res.status})`);
+
       // Populate fields; allow user edits
       setTitle(data.title || '');
       setDescription(data.description || '');
@@ -63,11 +81,21 @@ export default function CustomNewsForm({ onSaved, initial }) {
       if (linkUrl) form.append('link', linkUrl);
 
       const method = initial?._id ? 'PUT' : 'POST';
-      const url = initial?._id ? `/api/custom-news/${initial._id}` : '/api/custom-news';
+      const url = initial?._id
+        ? `${API_BASE}/api/custom-news/${initial._id}`
+        : `${API_BASE}/api/custom-news`;
 
       const res = await fetch(url, { method, body: form });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Save failed');
+
+      // Same HTML guard
+      const contentType = res.headers.get('content-type') || '';
+      const maybeText = await res.text();
+      const data = contentType.includes('application/json')
+        ? JSON.parse(maybeText)
+        : { error: maybeText };
+
+      if (!res.ok) throw new Error(data.error || `Save failed (${res.status})`);
+
       onSaved?.(data);
       if (!initial) {
         resetManualFields();
@@ -192,6 +220,9 @@ export default function CustomNewsForm({ onSaved, initial }) {
       <button className="btn" disabled={saving}>
         {saving ? 'Saving…' : (initial?._id ? 'Update' : 'Save')}
       </button>
+
+      {/* surface any error */}
+      {error && <div className="text-red-600 mt-2">{error}</div>}
     </form>
   );
 }
