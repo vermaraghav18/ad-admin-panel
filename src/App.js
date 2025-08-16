@@ -6,7 +6,7 @@ import MoviePromoBannerManager from './pages/MoviePromoBannerManager';
 import FeedManager from './components/FeedManager'; // ✅ Feeds
 import ShortsManagerPage from './pages/ShortsManagerPage'; // ✅ Shorts
 import TweetsManagerPage from './pages/TweetsManagerPage'; // ✅ Tweets
-import CustomNewsManagerPage from './pages/CustomNewsManagerPage';
+import CustomNewsManagerPage from './pages/CustomNewsManagerPage'; // ✅ Custom News
 import './App.css';
 
 // ✅ Centralized API base (env first, then Render fallback)
@@ -165,7 +165,9 @@ function App() {
           <Link to="/promo-banners" style={{ marginRight: '1rem' }}>🖼 Promo Banners</Link>
           <Link to="/shorts" style={{ marginRight: '1rem' }}>▶️ Shorts</Link>
           <Link to="/tweets" style={{ marginRight: '1rem' }}>🐦 Tweets</Link>
-          <Link to="/feeds">📰 Feeds</Link>
+          <Link to="/feeds" style={{ marginRight: '1rem' }}>📰 Feeds</Link>
+          {/* ✅ New Link */}
+          <Link to="/custom-news">🧩 Custom News</Link>
         </nav>
 
         <Routes>
@@ -175,7 +177,7 @@ function App() {
           <Route path="/shorts" element={<ShortsManagerPage />} />
           <Route path="/tweets" element={<TweetsManagerPage />} />
           <Route path="/feeds" element={<FeedManager />} />
-          <Route path="/custom-news" element={<CustomNewsManagerPage/>} />
+          <Route path="/custom-news" element={<CustomNewsManagerPage />} />
           <Route path="*" element={<AdManager />} />
         </Routes>
       </div>
