@@ -1,12 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import axios from 'axios';
+
+// Existing pages
 import MovieManagerPage from './pages/MovieManagerPage';
 import MoviePromoBannerManager from './pages/MoviePromoBannerManager';
 import FeedManager from './components/FeedManager'; // ✅ Feeds
 import ShortsManagerPage from './pages/ShortsManagerPage'; // ✅ Shorts
 import TweetsManagerPage from './pages/TweetsManagerPage'; // ✅ Tweets
 import CustomNewsManagerPage from './pages/CustomNewsManagerPage'; // ✅ Custom News
+
+// ✅ NEW: Small Ads page
+import SmallAdsManager from './pages/SmallAdsManager';
+
 import './App.css';
 
 // ✅ Centralized API base (env first, then Render fallback)
@@ -166,8 +172,8 @@ function App() {
           <Link to="/shorts" style={{ marginRight: '1rem' }}>▶️ Shorts</Link>
           <Link to="/tweets" style={{ marginRight: '1rem' }}>🐦 Tweets</Link>
           <Link to="/feeds" style={{ marginRight: '1rem' }}>📰 Feeds</Link>
-          {/* ✅ New Link */}
-          <Link to="/custom-news">🧩 Custom News</Link>
+          <Link to="/small-ads" style={{ marginRight: '1rem' }}>🧩 Small Ads</Link> {/* ✅ NEW */}
+          <Link to="/custom-news">🧪 Custom News</Link>
         </nav>
 
         <Routes>
@@ -177,6 +183,7 @@ function App() {
           <Route path="/shorts" element={<ShortsManagerPage />} />
           <Route path="/tweets" element={<TweetsManagerPage />} />
           <Route path="/feeds" element={<FeedManager />} />
+          <Route path="/small-ads" element={<SmallAdsManager />} /> {/* ✅ NEW */}
           <Route path="/custom-news" element={<CustomNewsManagerPage />} />
           <Route path="*" element={<AdManager />} />
         </Routes>
