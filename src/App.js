@@ -12,6 +12,8 @@ import CustomNewsManagerPage from './pages/CustomNewsManagerPage'; // ✅ Custom
 
 // ✅ NEW: Small Ads page
 import SmallAdsManager from './pages/SmallAdsManager';
+// ✅ NEW: News Hub page
+import NewsHubManager from './pages/NewsHubManager';
 
 import './App.css';
 
@@ -172,7 +174,8 @@ function App() {
           <Link to="/shorts" style={{ marginRight: '1rem' }}>▶️ Shorts</Link>
           <Link to="/tweets" style={{ marginRight: '1rem' }}>🐦 Tweets</Link>
           <Link to="/feeds" style={{ marginRight: '1rem' }}>📰 Feeds</Link>
-          <Link to="/small-ads" style={{ marginRight: '1rem' }}>🧩 Small Ads</Link> {/* ✅ NEW */}
+          <Link to="/small-ads" style={{ marginRight: '1rem' }}>🧩 Small Ads</Link>
+          <Link to="/news-hub" style={{ marginRight: '1rem' }}>🧱 News Hub</Link> {/* ✅ NEW */}
           <Link to="/custom-news">🧪 Custom News</Link>
         </nav>
 
@@ -183,7 +186,8 @@ function App() {
           <Route path="/shorts" element={<ShortsManagerPage />} />
           <Route path="/tweets" element={<TweetsManagerPage />} />
           <Route path="/feeds" element={<FeedManager />} />
-          <Route path="/small-ads" element={<SmallAdsManager />} /> {/* ✅ NEW */}
+          <Route path="/small-ads" element={<SmallAdsManager />} />
+          <Route path="/news-hub" element={<NewsHubManager />} /> {/* ✅ NEW */}
           <Route path="/custom-news" element={<CustomNewsManagerPage />} />
           <Route path="*" element={<AdManager />} />
         </Routes>
