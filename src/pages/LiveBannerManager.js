@@ -4,7 +4,7 @@ import axios from "axios";
 const API_BASE =
   process.env.REACT_APP_API_BASE || "https://ad-server-qx62.onrender.com";
 
-// Helpers to create new objects
+// ---------- helpers to create fresh objects ----------
 const emptyArticle = () => ({
   imageUrl: "",
   type: "news",
@@ -14,18 +14,25 @@ const emptyArticle = () => ({
   link: "",
 });
 
-const emptySection = () => ({
-  heading: "",
-  articles: [emptyArticle()],
-});
+const emptySection = () => ({ heading: "", articles: [emptyArticle()] });
 
 const emptyBanner = () => ({
   enabled: false,
   placementIndex: 1,
   headline: "",
-  mediaUrl: "",
+  mediaUrl: "",        // will be filled by upload
   sections: [emptySection()],
 });
+
+// ---------- small uploader (Cloudinary via backend) ----------
+async function uploadToCloudinary(file) {
+  const form = new FormData();
+  form.append("image", file);
+  const { data } = await axios.post(`${API_BASE}/api/upload/image`, form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data.url; // secure_url
+}
 
 export default function LiveBannerManager() {
   const [items, setItems] = useState([]);
@@ -34,9 +41,7 @@ export default function LiveBannerManager() {
   const [newBanner, setNewBanner] = useState(emptyBanner());
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    fetchAll();
-  }, []);
+  useEffect(() => { fetchAll(); }, []);
 
   async function fetchAll() {
     setLoading(true);
@@ -92,9 +97,7 @@ export default function LiveBannerManager() {
   async function addSection(id, heading) {
     if (!heading.trim()) return alert("Heading required");
     try {
-      await axios.post(`${API_BASE}/api/live-banners/${id}/sections`, {
-        heading,
-      });
+      await axios.post(`${API_BASE}/api/live-banners/${id}/sections`, { heading });
       await fetchAll();
     } catch (e) {
       console.error(e);
@@ -104,10 +107,7 @@ export default function LiveBannerManager() {
 
   async function updateSection(id, sIdx, heading) {
     try {
-      await axios.patch(
-        `${API_BASE}/api/live-banners/${id}/sections/${sIdx}`,
-        { heading }
-      );
+      await axios.patch(`${API_BASE}/api/live-banners/${id}/sections/${sIdx}`, { heading });
       await fetchAll();
     } catch (e) {
       console.error(e);
@@ -118,9 +118,7 @@ export default function LiveBannerManager() {
   async function deleteSection(id, sIdx) {
     if (!window.confirm("Delete this section?")) return;
     try {
-      await axios.delete(
-        `${API_BASE}/api/live-banners/${id}/sections/${sIdx}`
-      );
+      await axios.delete(`${API_BASE}/api/live-banners/${id}/sections/${sIdx}`);
       await fetchAll();
     } catch (e) {
       console.error(e);
@@ -132,10 +130,7 @@ export default function LiveBannerManager() {
   async function addArticle(id, sIdx, article) {
     if (!article.title.trim()) return alert("Article title required");
     try {
-      await axios.post(
-        `${API_BASE}/api/live-banners/${id}/sections/${sIdx}/articles`,
-        article
-      );
+      await axios.post(`${API_BASE}/api/live-banners/${id}/sections/${sIdx}/articles`, article);
       await fetchAll();
     } catch (e) {
       console.error(e);
@@ -145,10 +140,7 @@ export default function LiveBannerManager() {
 
   async function updateArticle(id, sIdx, aIdx, articlePatch) {
     try {
-      await axios.patch(
-        `${API_BASE}/api/live-banners/${id}/sections/${sIdx}/articles/${aIdx}`,
-        articlePatch
-      );
+      await axios.patch(`${API_BASE}/api/live-banners/${id}/sections/${sIdx}/articles/${aIdx}`, articlePatch);
       await fetchAll();
     } catch (e) {
       console.error(e);
@@ -159,9 +151,7 @@ export default function LiveBannerManager() {
   async function deleteArticle(id, sIdx, aIdx) {
     if (!window.confirm("Delete this article?")) return;
     try {
-      await axios.delete(
-        `${API_BASE}/api/live-banners/${id}/sections/${sIdx}/articles/${aIdx}`
-      );
+      await axios.delete(`${API_BASE}/api/live-banners/${id}/sections/${sIdx}/articles/${aIdx}`);
       await fetchAll();
     } catch (e) {
       console.error(e);
@@ -176,26 +166,21 @@ export default function LiveBannerManager() {
       {/* Create form */}
       <form
         onSubmit={createBanner}
-        style={{
-          marginBottom: 24,
-          padding: 16,
-          border: "1px solid #ddd",
-          borderRadius: 8,
-        }}
+        style={{ marginBottom: 24, padding: 16, border: "1px solid #ddd", borderRadius: 8 }}
       >
         <h3 style={{ marginTop: 0 }}>➕ Create Live Banner</h3>
+
         <div style={{ display: "grid", gap: 8, gridTemplateColumns: "1fr 1fr" }}>
           <label>
             Headline
             <input
               type="text"
               value={newBanner.headline}
-              onChange={(e) =>
-                setNewBanner({ ...newBanner, headline: e.target.value })
-              }
+              onChange={(e) => setNewBanner({ ...newBanner, headline: e.target.value })}
               placeholder="Banner headline"
             />
           </label>
+
           <label>
             Placement Index (after Nth article)
             <input
@@ -203,117 +188,38 @@ export default function LiveBannerManager() {
               value={newBanner.placementIndex}
               min={1}
               onChange={(e) =>
-                setNewBanner({
-                  ...newBanner,
-                  placementIndex: Number(e.target.value || 1),
-                })
+                setNewBanner({ ...newBanner, placementIndex: Number(e.target.value || 1) })
               }
             />
           </label>
+
           <label>
-            Media URL (optional)
+            Media (upload)
             <input
-              type="text"
-              value={newBanner.mediaUrl}
-              onChange={(e) =>
-                setNewBanner({ ...newBanner, mediaUrl: e.target.value })
-              }
-              placeholder="https://..."
+              type="file"
+              accept="image/*,video/*"
+              onChange={async (e) => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+                const url = await uploadToCloudinary(f);
+                setNewBanner({ ...newBanner, mediaUrl: url });
+              }}
             />
+            {newBanner.mediaUrl && (
+              <div style={{ marginTop: 6 }}>
+                <img src={newBanner.mediaUrl} alt="" style={{ maxHeight: 80, borderRadius: 6 }} />
+              </div>
+            )}
           </label>
+
           <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <input
               type="checkbox"
               checked={newBanner.enabled}
-              onChange={(e) =>
-                setNewBanner({ ...newBanner, enabled: e.target.checked })
-              }
+              onChange={(e) => setNewBanner({ ...newBanner, enabled: e.target.checked })}
             />
             Enabled
           </label>
-        </div>
-
-        {/* Initial section + article (optional) */}
-        <div style={{ marginTop: 12 }}>
-          <details>
-            <summary>Initial Section & Article (optional)</summary>
-            <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
-              <label>
-                Section Heading
-                <input
-                  type="text"
-                  value={newBanner.sections[0].heading}
-                  onChange={(e) => {
-                    const copy = { ...newBanner };
-                    copy.sections[0].heading = e.target.value;
-                    setNewBanner(copy);
-                  }}
-                  placeholder="e.g., Breaking, Mumbai, Sports"
-                />
-              </label>
-              <div
-                style={{
-                  padding: 8,
-                  border: "1px dashed #ccc",
-                  borderRadius: 6,
-                }}
-              >
-                <em>Article</em>
-                <div style={{ display: "grid", gap: 8 }}>
-                  <input
-                    type="text"
-                    placeholder="Title"
-                    value={newBanner.sections[0].articles[0].title}
-                    onChange={(e) => {
-                      const copy = { ...newBanner };
-                      copy.sections[0].articles[0].title = e.target.value;
-                      setNewBanner(copy);
-                    }}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Link"
-                    value={newBanner.sections[0].articles[0].link}
-                    onChange={(e) => {
-                      const copy = { ...newBanner };
-                      copy.sections[0].articles[0].link = e.target.value;
-                      setNewBanner(copy);
-                    }}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Image URL"
-                    value={newBanner.sections[0].articles[0].imageUrl}
-                    onChange={(e) => {
-                      const copy = { ...newBanner };
-                      copy.sections[0].articles[0].imageUrl = e.target.value;
-                      setNewBanner(copy);
-                    }}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Source name"
-                    value={newBanner.sections[0].articles[0].sourceName}
-                    onChange={(e) => {
-                      const copy = { ...newBanner };
-                      copy.sections[0].articles[0].sourceName = e.target.value;
-                      setNewBanner(copy);
-                    }}
-                  />
-                  <textarea
-                    rows={3}
-                    placeholder="Description"
-                    value={newBanner.sections[0].articles[0].description}
-                    onChange={(e) => {
-                      const copy = { ...newBanner };
-                      copy.sections[0].articles[0].description = e.target.value;
-                      setNewBanner(copy);
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          </details>
         </div>
 
         <div style={{ marginTop: 12 }}>
@@ -323,7 +229,7 @@ export default function LiveBannerManager() {
         </div>
       </form>
 
-      {/* List existing banners */}
+      {/* Existing banners list */}
       {loading ? (
         <p>Loading…</p>
       ) : error ? (
@@ -371,7 +277,7 @@ function BannerCard({
   });
 
   const [newHeading, setNewHeading] = useState("");
-  const [newArticleIdx, setNewArticleIdx] = useState(-1); // which section is adding a new article
+  const [newArticleIdx, setNewArticleIdx] = useState(-1);
   const [editArticle, setEditArticle] = useState(null); // {sIdx, aIdx, data}
 
   function saveBasics() {
@@ -384,14 +290,7 @@ function BannerCard({
   }
 
   return (
-    <div
-      style={{
-        border: "1px solid #ddd",
-        borderRadius: 8,
-        marginBottom: 18,
-        padding: 12,
-      }}
-    >
+    <div style={{ border: "1px solid #ddd", borderRadius: 8, marginBottom: 18, padding: 12 }}>
       <div style={{ display: "grid", gap: 8, gridTemplateColumns: "1fr 1fr" }}>
         <label>
           Headline
@@ -401,6 +300,7 @@ function BannerCard({
             onChange={(e) => setLocal({ ...local, headline: e.target.value })}
           />
         </label>
+
         <label>
           Placement Index
           <input
@@ -408,21 +308,30 @@ function BannerCard({
             min={1}
             value={local.placementIndex}
             onChange={(e) =>
-              setLocal({
-                ...local,
-                placementIndex: Number(e.target.value || 1),
-              })
+              setLocal({ ...local, placementIndex: Number(e.target.value || 1) })
             }
           />
         </label>
+
         <label>
-          Media URL
+          Media (upload)
           <input
-            type="text"
-            value={local.mediaUrl}
-            onChange={(e) => setLocal({ ...local, mediaUrl: e.target.value })}
+            type="file"
+            accept="image/*,video/*"
+            onChange={async (e) => {
+              const f = e.target.files?.[0];
+              if (!f) return;
+              const url = await uploadToCloudinary(f);
+              setLocal((s) => ({ ...s, mediaUrl: url }));
+            }}
           />
+          {local.mediaUrl && (
+            <div style={{ marginTop: 6 }}>
+              <img src={local.mediaUrl} alt="" style={{ maxHeight: 80, borderRadius: 6 }} />
+            </div>
+          )}
         </label>
+
         <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <input
             type="checkbox"
@@ -444,25 +353,10 @@ function BannerCard({
       <div style={{ marginTop: 14 }}>
         <h4 style={{ margin: "8px 0" }}>Sections</h4>
 
-        {banner.sections && banner.sections.length > 0 ? (
+        {banner.sections?.length ? (
           banner.sections.map((sec, sIdx) => (
-            <div
-              key={sIdx}
-              style={{
-                border: "1px dashed #ccc",
-                borderRadius: 6,
-                padding: 10,
-                marginBottom: 10,
-              }}
-            >
-              <div
-                style={{
-                  display: "grid",
-                  gap: 8,
-                  gridTemplateColumns: "1fr auto auto",
-                  alignItems: "center",
-                }}
-              >
+            <div key={sIdx} style={{ border: "1px dashed #ccc", borderRadius: 6, padding: 10, marginBottom: 10 }}>
+              <div style={{ display: "grid", gap: 8, gridTemplateColumns: "1fr auto auto", alignItems: "center" }}>
                 <input
                   type="text"
                   defaultValue={sec.heading}
@@ -471,10 +365,7 @@ function BannerCard({
                 <button onClick={() => setNewArticleIdx(newArticleIdx === sIdx ? -1 : sIdx)}>
                   {newArticleIdx === sIdx ? "Close" : "➕ Add Article"}
                 </button>
-                <button
-                  onClick={() => onDeleteSection(banner._id, sIdx)}
-                  style={{ color: "crimson" }}
-                >
+                <button onClick={() => onDeleteSection(banner._id, sIdx)} style={{ color: "crimson" }}>
                   Delete Section
                 </button>
               </div>
@@ -494,9 +385,7 @@ function BannerCard({
                       borderRadius: 6,
                     }}
                   >
-                    {editArticle &&
-                    editArticle.sIdx === sIdx &&
-                    editArticle.aIdx === aIdx ? (
+                    {editArticle && editArticle.sIdx === sIdx && editArticle.aIdx === aIdx ? (
                       <ArticleForm
                         data={editArticle.data}
                         onChange={(d) => setEditArticle({ ...editArticle, data: d })}
@@ -504,15 +393,12 @@ function BannerCard({
                     ) : (
                       <div>
                         <div style={{ fontWeight: 600 }}>{a.title}</div>
-                        <div style={{ fontSize: 12, opacity: 0.8 }}>
-                          {a.sourceName} • {a.link}
-                        </div>
+                        <div style={{ fontSize: 12, opacity: 0.8 }}>{a.sourceName} • {a.link}</div>
+                        {a.imageUrl && <img src={a.imageUrl} alt="" style={{ height: 48, marginTop: 6, borderRadius: 4 }} />}
                       </div>
                     )}
 
-                    {editArticle &&
-                    editArticle.sIdx === sIdx &&
-                    editArticle.aIdx === aIdx ? (
+                    {editArticle && editArticle.sIdx === sIdx && editArticle.aIdx === aIdx ? (
                       <>
                         <button
                           onClick={() => {
@@ -559,10 +445,7 @@ function BannerCard({
               {/* Add article form */}
               {newArticleIdx === sIdx && (
                 <InlineAddArticleForm
-                  onSubmit={(article) => {
-                    onAddArticle(banner._id, sIdx, article);
-                    setNewArticleIdx(-1);
-                  }}
+                  onSubmit={(article) => { onAddArticle(banner._id, sIdx, article); setNewArticleIdx(-1); }}
                 />
               )}
             </div>
@@ -572,43 +455,42 @@ function BannerCard({
         )}
 
         {/* Add section */}
-        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-  <input
-    type="text"
-    placeholder="New section heading"
-    value={newHeading}
-    onChange={(e) => setNewHeading(e.target.value)}
-  />
-  <button
-    onClick={() => {
-      onAddSection(banner._id, newHeading.trim());
-      setNewHeading(""); // clear input after add
-    }}
-  >
-    Add Section
-  </button>
-</div>
-
+        <AddSectionInput onAdd={(h) => addSection(banner._id, h)} />
       </div>
     </div>
   );
 }
 
-/* ---------------- Small subcomponents ---------------- */
+function AddSectionInput({ onAdd }) {
+  const [heading, setHeading] = useState("");
+  return (
+    <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+      <input
+        type="text"
+        placeholder="New section heading"
+        value={heading}
+        onChange={(e) => setHeading(e.target.value)}
+      />
+      <button
+        onClick={() => {
+          const h = heading.trim();
+          if (!h) return;
+          onAdd(h);
+          setHeading("");
+        }}
+      >
+        Add Section
+      </button>
+    </div>
+  );
+}
+
+/* ---------- Subcomponents ---------- */
 
 function InlineAddArticleForm({ onSubmit }) {
   const [data, setData] = useState(emptyArticle());
-
   return (
-    <div
-      style={{
-        marginTop: 8,
-        padding: 10,
-        border: "1px dashed #ccc",
-        borderRadius: 6,
-        background: "#fbfbfb",
-      }}
-    >
+    <div style={{ marginTop: 8, padding: 10, border: "1px dashed #ccc", borderRadius: 6, background: "#fbfbfb" }}>
       <ArticleForm data={data} onChange={setData} />
       <div style={{ marginTop: 8 }}>
         <button onClick={() => onSubmit(data)}>Add Article</button>
@@ -620,40 +502,32 @@ function InlineAddArticleForm({ onSubmit }) {
 function ArticleForm({ data, onChange }) {
   return (
     <div style={{ display: "grid", gap: 6 }}>
-      <input
-        type="text"
-        placeholder="Title"
-        value={data.title}
-        onChange={(e) => onChange({ ...data, title: e.target.value })}
-      />
-      <input
-        type="text"
-        placeholder="Link"
-        value={data.link}
-        onChange={(e) => onChange({ ...data, link: e.target.value })}
-      />
-      <input
-        type="text"
-        placeholder="Image URL"
-        value={data.imageUrl}
-        onChange={(e) => onChange({ ...data, imageUrl: e.target.value })}
-      />
-      <input
-        type="text"
-        placeholder="Source name"
-        value={data.sourceName}
-        onChange={(e) => onChange({ ...data, sourceName: e.target.value })}
-      />
-      <textarea
-        rows={3}
-        placeholder="Description"
-        value={data.description}
-        onChange={(e) => onChange({ ...data, description: e.target.value })}
-      />
-      <select
-        value={data.type}
-        onChange={(e) => onChange({ ...data, type: e.target.value })}
-      >
+      <input type="text" placeholder="Title" value={data.title}
+             onChange={(e) => onChange({ ...data, title: e.target.value })} />
+      <input type="text" placeholder="Link" value={data.link}
+             onChange={(e) => onChange({ ...data, link: e.target.value })} />
+
+      {/* Upload instead of URL */}
+      <label>
+        Image (upload)
+        <input
+          type="file"
+          accept="image/*"
+          onChange={async (e) => {
+            const f = e.target.files?.[0];
+            if (!f) return;
+            const url = await uploadToCloudinary(f);
+            onChange({ ...data, imageUrl: url });
+          }}
+        />
+      </label>
+      {data.imageUrl && <img src={data.imageUrl} alt="" style={{ height: 56, borderRadius: 6 }} />}
+
+      <input type="text" placeholder="Source name" value={data.sourceName}
+             onChange={(e) => onChange({ ...data, sourceName: e.target.value })} />
+      <textarea rows={3} placeholder="Description" value={data.description}
+                onChange={(e) => onChange({ ...data, description: e.target.value })} />
+      <select value={data.type} onChange={(e) => onChange({ ...data, type: e.target.value })}>
         <option value="news">news</option>
         <option value="update">update</option>
         <option value="alert">alert</option>
