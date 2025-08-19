@@ -15,7 +15,6 @@ import SmallAdsManager from './pages/SmallAdsManager';
 // ✅ NEW: News Hub page
 import NewsHubManager from './pages/NewsHubManager';
 // ✅ NEW: Live Updates page
-import LiveUpdatesManager from './pages/LiveUpdatesManager';
 
 import './App.css';
 
@@ -191,7 +190,6 @@ function App() {
           <Route path="/feeds" element={<FeedManager />} />
           <Route path="/small-ads" element={<SmallAdsManager />} />
           <Route path="/news-hub" element={<NewsHubManager />} />
-          <Route path="/live-updates" element={<LiveUpdatesManager />} /> {/* ✅ NEW */}
           <Route path="/custom-news" element={<CustomNewsManagerPage />} />
           <Route path="*" element={<AdManager />} />
         </Routes>
