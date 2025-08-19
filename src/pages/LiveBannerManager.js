@@ -33,43 +33,37 @@ function LiveBannerManager() {
     setArticles(updated);
   };
 
-  const addArticle = () => {
+  const addArticleField = () => {
     setArticles([
       ...articles,
       { title: "", description: "", image: "", sourceName: "", sourceLink: "" },
     ]);
   };
 
-  const removeArticle = (index) => {
-    const updated = articles.filter((_, i) => i !== index);
+  const removeArticleField = (index) => {
+    const updated = [...articles];
+    updated.splice(index, 1);
     setArticles(updated);
   };
 
   const addBanner = async () => {
     if (!file) return alert("Please select an image file");
-    if (!headline.trim()) return alert("Please enter a headline");
+    if (!headline.trim()) return alert("Headline is required");
 
     try {
       const formData = new FormData();
-      formData.append("image", file); // multer field
+      formData.append("image", file); // multer field name
       formData.append("headline", headline);
-      formData.append("articles", JSON.stringify(articles)); // stringify array
+      formData.append("articles", JSON.stringify(articles));
 
       await axios.post(API_BASE, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      // Reset state
       setFile(null);
       setHeadline("");
       setArticles([
-        {
-          title: "",
-          description: "",
-          image: "",
-          sourceName: "",
-          sourceLink: "",
-        },
+        { title: "", description: "", image: "", sourceName: "", sourceLink: "" },
       ]);
       fetchBanners();
     } catch (err) {
@@ -89,100 +83,80 @@ function LiveBannerManager() {
   };
 
   return (
-    <div style={{ padding: 20 }}>
+    <div>
       <h2>Live Banner Manager</h2>
 
-      {/* Upload Image + Headline */}
-      <div>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setFile(e.target.files?.[0] || null)}
-        />
-        <input
-          type="text"
-          placeholder="Headline"
-          value={headline}
-          onChange={(e) => setHeadline(e.target.value)}
-          style={{ marginLeft: 8 }}
-        />
-      </div>
+      <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+      <input
+        type="text"
+        placeholder="Headline"
+        value={headline}
+        onChange={(e) => setHeadline(e.target.value)}
+        style={{ marginLeft: 8 }}
+      />
 
-      {/* Articles Section */}
-      <h3 style={{ marginTop: 20 }}>Articles</h3>
-      {articles.map((a, i) => (
+      <h3 style={{ marginTop: 16 }}>Articles</h3>
+      {articles.map((article, idx) => (
         <div
-          key={i}
-          style={{
-            border: "1px solid #ccc",
-            padding: 10,
-            marginBottom: 10,
-            borderRadius: 6,
-          }}
+          key={idx}
+          style={{ border: "1px solid #ccc", padding: 10, marginBottom: 10 }}
         >
           <input
             type="text"
             placeholder="Title"
-            value={a.title}
-            onChange={(e) => handleArticleChange(i, "title", e.target.value)}
+            value={article.title}
+            onChange={(e) => handleArticleChange(idx, "title", e.target.value)}
+            style={{ display: "block", marginBottom: 6 }}
           />
-          <br />
           <textarea
             placeholder="Description"
-            value={a.description}
+            value={article.description}
             onChange={(e) =>
-              handleArticleChange(i, "description", e.target.value)
+              handleArticleChange(idx, "description", e.target.value)
             }
-            style={{ width: "100%", marginTop: 4 }}
+            style={{ display: "block", marginBottom: 6, width: "100%" }}
           />
-          <br />
           <input
             type="text"
             placeholder="Image URL"
-            value={a.image}
-            onChange={(e) => handleArticleChange(i, "image", e.target.value)}
+            value={article.image}
+            onChange={(e) => handleArticleChange(idx, "image", e.target.value)}
+            style={{ display: "block", marginBottom: 6 }}
           />
-          <br />
           <input
             type="text"
             placeholder="Source Name"
-            value={a.sourceName}
+            value={article.sourceName}
             onChange={(e) =>
-              handleArticleChange(i, "sourceName", e.target.value)
+              handleArticleChange(idx, "sourceName", e.target.value)
             }
+            style={{ display: "block", marginBottom: 6 }}
           />
-          <br />
           <input
             type="text"
             placeholder="Source Link"
-            value={a.sourceLink}
+            value={article.sourceLink}
             onChange={(e) =>
-              handleArticleChange(i, "sourceLink", e.target.value)
+              handleArticleChange(idx, "sourceLink", e.target.value)
             }
+            style={{ display: "block", marginBottom: 6 }}
           />
-          <br />
-          <button
-            onClick={() => removeArticle(i)}
-            style={{ marginTop: 6, color: "red" }}
-          >
-            Remove Article
-          </button>
+          <button onClick={() => removeArticleField(idx)}>Remove Article</button>
         </div>
       ))}
 
-      <button onClick={addArticle} style={{ marginTop: 10 }}>
+      <button onClick={addArticleField} style={{ marginTop: 8 }}>
         + Add Another Article
       </button>
       <br />
-
-      <button onClick={addBanner} style={{ marginTop: 20 }}>
+      <button onClick={addBanner} style={{ marginTop: 12 }}>
         Upload Banner
       </button>
 
-      {/* Banner List */}
-      <ul style={{ marginTop: 30 }}>
+      <h3 style={{ marginTop: 24 }}>Existing Banners</h3>
+      <ul style={{ marginTop: 16 }}>
         {banners.map((b) => (
-          <li key={b._id} style={{ marginBottom: 16 }}>
+          <li key={b._id} style={{ marginBottom: 12 }}>
             <img
               src={b.mediaUrl}
               alt="banner"
