@@ -9,6 +9,7 @@ import FeedManager from './components/FeedManager'; // ✅ Feeds
 import ShortsManagerPage from './pages/ShortsManagerPage'; // ✅ Shorts
 import TweetsManagerPage from './pages/TweetsManagerPage'; // ✅ Tweets
 import CustomNewsManagerPage from './pages/CustomNewsManagerPage'; // ✅ Custom News
+import LiveBannerManager from './pages/LiveBannerManager';
 
 // ✅ NEW: Small Ads page
 import SmallAdsManager from './pages/SmallAdsManager';
@@ -190,6 +191,7 @@ function App() {
           <Route path="/small-ads" element={<SmallAdsManager />} />
           <Route path="/news-hub" element={<NewsHubManager />} />
           <Route path="/custom-news" element={<CustomNewsManagerPage />} />
+          <Route path="/live-banners" element={<LiveBannerManager />} />
           <Route path="*" element={<AdManager />} />
         </Routes>
       </div>
