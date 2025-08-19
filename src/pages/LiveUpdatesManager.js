@@ -3,6 +3,26 @@ import React, { useEffect, useMemo, useState } from 'react';
 
 const API = process.env.REACT_APP_API_BASE || ''; // e.g. "http://localhost:3001"
 
+// ---------- Helpers for FormData ----------
+async function uploadFormData(url, data) {
+  const formData = new FormData();
+  for (const [key, val] of Object.entries(data)) {
+    if (val !== undefined && val !== null) formData.append(key, val);
+  }
+  const res = await fetch(url, { method: 'POST', body: formData });
+  return res.json();
+}
+
+async function patchFormData(url, data) {
+  const formData = new FormData();
+  for (const [key, val] of Object.entries(data)) {
+    if (val !== undefined && val !== null) formData.append(key, val);
+  }
+  const res = await fetch(url, { method: 'PATCH', body: formData });
+  return res.json();
+}
+
+// ---------- SSE Hook ----------
 function useSSE(onEvent) {
   useEffect(() => {
     const es = new EventSource(`${API}/api/live/stream`);
@@ -19,6 +39,7 @@ function useSSE(onEvent) {
   }, []);
 }
 
+// ---------- Main Component ----------
 export default function LiveUpdatesManager() {
   const [tab, setTab] = useState('topics');
 
@@ -41,25 +62,37 @@ export default function LiveUpdatesManager() {
   };
 
   useEffect(() => { refresh(); }, []); // initial
-  useEffect(() => { if (topicIdFilter) fetch(`${API}/api/live/entries?topicId=${topicIdFilter}`).then(r => r.json()).then(setEntries); }, [topicIdFilter]);
+  useEffect(() => {
+    if (topicIdFilter)
+      fetch(`${API}/api/live/entries?topicId=${topicIdFilter}`).then(r => r.json()).then(setEntries);
+  }, [topicIdFilter]);
 
   useSSE(() => refresh());
 
-  // ---------- Forms helpers ----------
+  // ---------- Topic Helpers ----------
   async function addTopic() {
     const title = prompt('Topic title');
     if (!title) return;
-    await fetch(`${API}/api/live/topics`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title }) });
+    await fetch(`${API}/api/live/topics`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title })
+    });
     refresh();
   }
   async function toggleTopic(t) {
-    await fetch(`${API}/api/live/topics/${t._id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isActive: !t.isActive }) });
+    await fetch(`${API}/api/live/topics/${t._id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive: !t.isActive })
+    });
     refresh();
   }
   async function renameTopic(t) {
     const title = prompt('New title', t.title);
     if (!title) return;
-    await fetch(`${API}/api/live/topics/${t._id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title }) });
+    await fetch(`${API}/api/live/topics/${t._id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title })
+    });
     refresh();
   }
   async function deleteTopic(t) {
@@ -69,53 +102,77 @@ export default function LiveUpdatesManager() {
     refresh();
   }
 
+  // ---------- Entry Helpers ----------
   async function addEntry() {
     if (!topicIdFilter) { alert('Choose a topic first'); return; }
+
     const summary = prompt('Summary (1–280 chars)');
     if (!summary) return;
     let linkUrl = prompt('Article link (http/https)');
     if (!/^https?:\/\//i.test(linkUrl || '')) linkUrl = `https://${linkUrl}`;
     const sourceName = prompt('Source (optional)') || '';
-    const imageUrl = prompt('Image URL (optional)') || '';
     const ordinal = Number(prompt('Ordinal (0..n, optional)', '0')) || 0;
 
-    await fetch(`${API}/api/live/entries`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ topicId: topicIdFilter, summary, linkUrl, sourceName, imageUrl, ordinal })
-    });
-    refresh();
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*,video/*';
+
+    fileInput.onchange = async () => {
+      const file = fileInput.files[0];
+      await uploadFormData(`${API}/api/live/entries`, {
+        topicId: topicIdFilter,
+        summary,
+        linkUrl,
+        sourceName,
+        ordinal,
+        media: file,
+      });
+      refresh();
+    };
+
+    fileInput.click();
   }
+
   async function editEntry(e) {
     const summary = prompt('Summary', e.summary) ?? e.summary;
     let linkUrl = prompt('Article link', e.linkUrl) ?? e.linkUrl;
     if (!/^https?:\/\//i.test(linkUrl || '')) linkUrl = `https://${linkUrl}`;
     const sourceName = prompt('Source', e.sourceName || '') ?? e.sourceName;
-    const imageUrl = prompt('Image URL', e.imageUrl || '') ?? e.imageUrl;
     const ordinal = Number(prompt('Ordinal', String(e.ordinal))) ?? e.ordinal;
 
-    await fetch(`${API}/api/live/entries/${e._id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ summary, linkUrl, sourceName, imageUrl, ordinal })
-    });
-    refresh();
+    if (window.confirm('Upload a new image/video? Click OK to pick file, Cancel to keep old one.')) {
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'image/*,video/*';
+      fileInput.onchange = async () => {
+        const file = fileInput.files[0];
+        await patchFormData(`${API}/api/live/entries/${e._id}`, {
+          summary, linkUrl, sourceName, ordinal, media: file
+        });
+        refresh();
+      };
+      fileInput.click();
+    } else {
+      await patchFormData(`${API}/api/live/entries/${e._id}`, { summary, linkUrl, sourceName, ordinal });
+      refresh();
+    }
   }
+
   async function deleteEntry(e) {
     if (!window.confirm('Delete this entry?')) return;
     await fetch(`${API}/api/live/entries/${e._id}`, { method: 'DELETE' });
     refresh();
   }
 
+  // ---------- Banner Helpers ----------
   async function saveBanner(next) {
-    await fetch(`${API}/api/live/banner`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(next)
-    });
+    await patchFormData(`${API}/api/live/banner`, next);
     refresh();
   }
 
   const selectedTopic = useMemo(() => topics.find(t => t._id === topicIdFilter), [topics, topicIdFilter]);
 
+  // ---------- Render ----------
   return (
     <div style={{ padding: 20 }}>
       <h1>Live Updates</h1>
@@ -126,6 +183,7 @@ export default function LiveUpdatesManager() {
         <button onClick={() => setTab('banner')} disabled={tab==='banner'}>Banner</button>
       </div>
 
+      {/* --- Topics Tab --- */}
       {tab === 'topics' && (
         <>
           <div style={{ marginBottom: 12 }}>
@@ -153,6 +211,7 @@ export default function LiveUpdatesManager() {
         </>
       )}
 
+      {/* --- Entries Tab --- */}
       {tab === 'entries' && (
         <>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
@@ -168,7 +227,7 @@ export default function LiveUpdatesManager() {
           </div>
           <table width="100%" border="1" cellPadding="8" style={{ borderCollapse: 'collapse' }}>
             <thead>
-              <tr><th>Summary</th><th>Source</th><th>Link</th><th>Image</th><th>Ordinal</th><th>Updated</th><th>Actions</th></tr>
+              <tr><th>Summary</th><th>Source</th><th>Link</th><th>Media</th><th>Ordinal</th><th>Updated</th><th>Actions</th></tr>
             </thead>
             <tbody>
               {entries.map(e => (
@@ -176,7 +235,11 @@ export default function LiveUpdatesManager() {
                   <td style={{ maxWidth: 420 }}>{e.summary}</td>
                   <td>{e.sourceName || '-'}</td>
                   <td><a href={e.linkUrl} target="_blank" rel="noreferrer">Open</a></td>
-                  <td>{e.imageUrl ? <img src={e.imageUrl} alt="" style={{ width: 56, height: 36, objectFit: 'cover' }}/> : '-'}</td>
+                  <td>
+                    {e.imageUrl
+                      ? <img src={e.imageUrl} alt="" style={{ width: 56, height: 36, objectFit: 'cover' }}/>
+                      : '-'}
+                  </td>
                   <td>{e.ordinal}</td>
                   <td>{new Date(e.updatedAt).toLocaleString()}</td>
                   <td>
@@ -190,6 +253,7 @@ export default function LiveUpdatesManager() {
         </>
       )}
 
+      {/* --- Banner Tab --- */}
       {tab === 'banner' && (
         <>
           <div style={{ display: 'grid', gap: 12, maxWidth: 640 }}>
@@ -201,12 +265,17 @@ export default function LiveUpdatesManager() {
                 style={{ width: '100%' }}
               />
             </label>
-            <label>Media URL (image/video)
+            <label>Upload Media (image/video)
               <input
-                type="text"
-                defaultValue={banner?.mediaUrl || ''}
-                onBlur={e => saveBanner({ mediaUrl: e.target.value })}
-                style={{ width: '100%' }}
+                type="file"
+                accept="image/*,video/*"
+                onChange={async e => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    await patchFormData(`${API}/api/live/banner`, { media: file });
+                    refresh();
+                  }
+                }}
               />
             </label>
             <label>Media Type
