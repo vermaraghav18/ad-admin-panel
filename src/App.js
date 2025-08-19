@@ -177,6 +177,7 @@ function App() {
           <Link to="/tweets" style={{ marginRight: '1rem' }}>🐦 Tweets</Link>
           <Link to="/feeds" style={{ marginRight: '1rem' }}>📰 Feeds</Link>
           <Link to="/small-ads" style={{ marginRight: '1rem' }}>🧩 Small Ads</Link>
+          <Link to="/live-banners" style={{ marginRight: '1rem' }}>📡 Live Banners</Link>
           <Link to="/news-hub" style={{ marginRight: '1rem' }}>🧱 News Hub</Link>
           <Link to="/custom-news">🧪 Custom News</Link>
         </nav>
