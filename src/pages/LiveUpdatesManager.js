@@ -48,6 +48,15 @@ export default function LiveUpdatesManager() {
   const [topicIdFilter, setTopicIdFilter] = useState('');
   const [banner, setBanner] = useState(null);
 
+  // Entry form state
+  const [showForm, setShowForm] = useState(false);
+  const [editingEntry, setEditingEntry] = useState(null);
+  const [summary, setSummary] = useState('');
+  const [linkUrl, setLinkUrl] = useState('');
+  const [sourceName, setSourceName] = useState('');
+  const [ordinal, setOrdinal] = useState(0);
+  const [media, setMedia] = useState(null);
+
   const refresh = async () => {
     const [t, b] = await Promise.all([
       fetch(`${API}/api/live/topics`).then(r => r.json()),
@@ -103,59 +112,37 @@ export default function LiveUpdatesManager() {
   }
 
   // ---------- Entry Helpers ----------
-  async function addEntry() {
+  function openForm(entry = null) {
     if (!topicIdFilter) { alert('Choose a topic first'); return; }
-
-    const summary = prompt('Summary (1–280 chars)');
-    if (!summary) return;
-    let linkUrl = prompt('Article link (http/https)');
-    if (!/^https?:\/\//i.test(linkUrl || '')) linkUrl = `https://${linkUrl}`;
-    const sourceName = prompt('Source (optional)') || '';
-    const ordinal = Number(prompt('Ordinal (0..n, optional)', '0')) || 0;
-
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = 'image/*,video/*';
-
-    fileInput.onchange = async () => {
-      const file = fileInput.files[0];
-      await uploadFormData(`${API}/api/live/entries`, {
-        topicId: topicIdFilter,
-        summary,
-        linkUrl,
-        sourceName,
-        ordinal,
-        media: file,
-      });
-      refresh();
-    };
-
-    fileInput.click();
+    setEditingEntry(entry);
+    setSummary(entry?.summary || '');
+    setLinkUrl(entry?.linkUrl || '');
+    setSourceName(entry?.sourceName || '');
+    setOrdinal(entry?.ordinal || 0);
+    setMedia(null);
+    setShowForm(true);
   }
 
-  async function editEntry(e) {
-    const summary = prompt('Summary', e.summary) ?? e.summary;
-    let linkUrl = prompt('Article link', e.linkUrl) ?? e.linkUrl;
-    if (!/^https?:\/\//i.test(linkUrl || '')) linkUrl = `https://${linkUrl}`;
-    const sourceName = prompt('Source', e.sourceName || '') ?? e.sourceName;
-    const ordinal = Number(prompt('Ordinal', String(e.ordinal))) ?? e.ordinal;
+  async function submitEntry() {
+    if (!summary) { alert("Summary required"); return; }
 
-    if (window.confirm('Upload a new image/video? Click OK to pick file, Cancel to keep old one.')) {
-      const fileInput = document.createElement('input');
-      fileInput.type = 'file';
-      fileInput.accept = 'image/*,video/*';
-      fileInput.onchange = async () => {
-        const file = fileInput.files[0];
-        await patchFormData(`${API}/api/live/entries/${e._id}`, {
-          summary, linkUrl, sourceName, ordinal, media: file
-        });
-        refresh();
-      };
-      fileInput.click();
+    const data = {
+      topicId: topicIdFilter,
+      summary,
+      linkUrl: linkUrl?.startsWith('http') ? linkUrl : `https://${linkUrl}`,
+      sourceName,
+      ordinal,
+      media,
+    };
+
+    if (editingEntry) {
+      await patchFormData(`${API}/api/live/entries/${editingEntry._id}`, data);
     } else {
-      await patchFormData(`${API}/api/live/entries/${e._id}`, { summary, linkUrl, sourceName, ordinal });
-      refresh();
+      await uploadFormData(`${API}/api/live/entries`, data);
     }
+    setShowForm(false);
+    setEditingEntry(null);
+    refresh();
   }
 
   async function deleteEntry(e) {
@@ -222,9 +209,52 @@ export default function LiveUpdatesManager() {
                 {topics.map(t => <option key={t._id} value={t._id}>{t.title}</option>)}
               </select>
             </label>
-            <button onClick={addEntry} disabled={!topicIdFilter}>+ Add Entry</button>
+            <button onClick={() => openForm()} disabled={!topicIdFilter}>+ Add Entry</button>
             {selectedTopic && <span style={{ opacity: 0.7 }}>({selectedTopic.title})</span>}
           </div>
+
+          {showForm && (
+            <div style={{ border: '1px solid #ccc', padding: 12, marginBottom: 12 }}>
+              <h3>{editingEntry ? 'Edit Entry' : 'Add Entry'}</h3>
+              <input
+                type="text"
+                placeholder="Summary (1–280 chars)"
+                value={summary}
+                onChange={e => setSummary(e.target.value)}
+                style={{ display: 'block', marginBottom: 8, width: '100%' }}
+              />
+              <input
+                type="text"
+                placeholder="Article Link (https://…)"
+                value={linkUrl}
+                onChange={e => setLinkUrl(e.target.value)}
+                style={{ display: 'block', marginBottom: 8, width: '100%' }}
+              />
+              <input
+                type="text"
+                placeholder="Source Name"
+                value={sourceName}
+                onChange={e => setSourceName(e.target.value)}
+                style={{ display: 'block', marginBottom: 8, width: '100%' }}
+              />
+              <input
+                type="number"
+                placeholder="Ordinal"
+                value={ordinal}
+                onChange={e => setOrdinal(e.target.value)}
+                style={{ display: 'block', marginBottom: 8, width: '100%' }}
+              />
+              <input
+                type="file"
+                accept="image/*,video/*"
+                onChange={e => setMedia(e.target.files[0])}
+                style={{ display: 'block', marginBottom: 8 }}
+              />
+              <button onClick={submitEntry}>Save</button>{' '}
+              <button onClick={() => setShowForm(false)}>Cancel</button>
+            </div>
+          )}
+
           <table width="100%" border="1" cellPadding="8" style={{ borderCollapse: 'collapse' }}>
             <thead>
               <tr><th>Summary</th><th>Source</th><th>Link</th><th>Media</th><th>Ordinal</th><th>Updated</th><th>Actions</th></tr>
@@ -243,7 +273,7 @@ export default function LiveUpdatesManager() {
                   <td>{e.ordinal}</td>
                   <td>{new Date(e.updatedAt).toLocaleString()}</td>
                   <td>
-                    <button onClick={() => editEntry(e)}>Edit</button>{' '}
+                    <button onClick={() => openForm(e)}>Edit</button>{' '}
                     <button onClick={() => deleteEntry(e)}>Delete</button>
                   </td>
                 </tr>
