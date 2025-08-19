@@ -10,6 +10,7 @@ import ShortsManagerPage from './pages/ShortsManagerPage'; // ✅ Shorts
 import TweetsManagerPage from './pages/TweetsManagerPage'; // ✅ Tweets
 import CustomNewsManagerPage from './pages/CustomNewsManagerPage'; // ✅ Custom News
 import LiveBannerManager from './pages/LiveBannerManager';
+import BannerWithArticleManager from './pages/BannerWithArticleManager';
 
 // ✅ NEW: Small Ads page
 import SmallAdsManager from './pages/SmallAdsManager';
@@ -179,6 +180,7 @@ function App() {
           <Link to="/small-ads" style={{ marginRight: '1rem' }}>🧩 Small Ads</Link>
           <Link to="/live-banners" style={{ marginRight: '1rem' }}>📡 Live Banners</Link>
           <Link to="/news-hub" style={{ marginRight: '1rem' }}>🧱 News Hub</Link>
+           <Link to="/banners" style={{ marginRight: '1rem' }}>📰 Banners w/ Article</Link>
           <Link to="/custom-news">🧪 Custom News</Link>
         </nav>
 
@@ -193,6 +195,7 @@ function App() {
           <Route path="/news-hub" element={<NewsHubManager />} />
           <Route path="/custom-news" element={<CustomNewsManagerPage />} />
           <Route path="/live-banners" element={<LiveBannerManager />} />
+          <Route path="/banners" element={<BannerWithArticleManager />} />
           <Route path="*" element={<AdManager />} />
         </Routes>
       </div>
