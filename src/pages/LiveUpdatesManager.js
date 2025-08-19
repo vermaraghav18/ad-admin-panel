@@ -3,22 +3,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 
 const API = process.env.REACT_APP_API_BASE || ''; // e.g. "http://localhost:3001"
 
-// ---------- Helpers for FormData ----------
-async function uploadFormData(url, data) {
+// ---------- Helpers ----------
+async function uploadFormData(url, data, method = 'POST') {
   const formData = new FormData();
   for (const [key, val] of Object.entries(data)) {
     if (val !== undefined && val !== null) formData.append(key, val);
   }
-  const res = await fetch(url, { method: 'POST', body: formData });
-  return res.json();
-}
-
-async function patchFormData(url, data) {
-  const formData = new FormData();
-  for (const [key, val] of Object.entries(data)) {
-    if (val !== undefined && val !== null) formData.append(key, val);
-  }
-  const res = await fetch(url, { method: 'PATCH', body: formData });
+  const res = await fetch(url, { method, body: formData });
   return res.json();
 }
 
@@ -26,7 +17,6 @@ async function patchFormData(url, data) {
 function useSSE(onEvent) {
   useEffect(() => {
     const es = new EventSource(`${API}/api/live/stream`);
-    es.onmessage = () => {};
     es.addEventListener('topic_created', e => onEvent(JSON.parse(e.data)));
     es.addEventListener('topic_updated', e => onEvent(JSON.parse(e.data)));
     es.addEventListener('topic_deleted', e => onEvent(JSON.parse(e.data)));
@@ -48,14 +38,8 @@ export default function LiveUpdatesManager() {
   const [topicIdFilter, setTopicIdFilter] = useState('');
   const [banner, setBanner] = useState(null);
 
-  // Entry form state
-  const [showForm, setShowForm] = useState(false);
-  const [editingEntry, setEditingEntry] = useState(null);
-  const [summary, setSummary] = useState('');
-  const [linkUrl, setLinkUrl] = useState('');
-  const [sourceName, setSourceName] = useState('');
-  const [ordinal, setOrdinal] = useState(0);
-  const [media, setMedia] = useState(null);
+  // --- Entry form state ---
+  const [entryForm, setEntryForm] = useState(null);
 
   const refresh = async () => {
     const [t, b] = await Promise.all([
@@ -112,36 +96,25 @@ export default function LiveUpdatesManager() {
   }
 
   // ---------- Entry Helpers ----------
-  function openForm(entry = null) {
-    if (!topicIdFilter) { alert('Choose a topic first'); return; }
-    setEditingEntry(entry);
-    setSummary(entry?.summary || '');
-    setLinkUrl(entry?.linkUrl || '');
-    setSourceName(entry?.sourceName || '');
-    setOrdinal(entry?.ordinal || 0);
-    setMedia(null);
-    setShowForm(true);
-  }
-
-  async function submitEntry() {
-    if (!summary) { alert("Summary required"); return; }
-
+  async function saveEntry(e) {
+    if (!entryForm) return;
     const data = {
       topicId: topicIdFilter,
-      summary,
-      linkUrl: linkUrl?.startsWith('http') ? linkUrl : `https://${linkUrl}`,
-      sourceName,
-      ordinal,
-      media,
+      title: entryForm.title,
+      summary: entryForm.summary,
+      linkUrl: entryForm.linkUrl,
+      sourceName: entryForm.sourceName,
+      ordinal: entryForm.ordinal,
+      media: entryForm.media,
     };
 
-    if (editingEntry) {
-      await patchFormData(`${API}/api/live/entries/${editingEntry._id}`, data);
+    if (entryForm._id) {
+      await uploadFormData(`${API}/api/live/entries/${entryForm._id}`, data, 'PATCH');
     } else {
-      await uploadFormData(`${API}/api/live/entries`, data);
+      await uploadFormData(`${API}/api/live/entries`, data, 'POST');
     }
-    setShowForm(false);
-    setEditingEntry(null);
+
+    setEntryForm(null);
     refresh();
   }
 
@@ -153,7 +126,7 @@ export default function LiveUpdatesManager() {
 
   // ---------- Banner Helpers ----------
   async function saveBanner(next) {
-    await patchFormData(`${API}/api/live/banner`, next);
+    await uploadFormData(`${API}/api/live/banner`, next, 'PATCH');
     refresh();
   }
 
@@ -209,60 +182,81 @@ export default function LiveUpdatesManager() {
                 {topics.map(t => <option key={t._id} value={t._id}>{t.title}</option>)}
               </select>
             </label>
-            <button onClick={() => openForm()} disabled={!topicIdFilter}>+ Add Entry</button>
+            <button
+              onClick={() => setEntryForm({ title: '', summary: '', linkUrl: '', sourceName: '', ordinal: 0, media: null })}
+              disabled={!topicIdFilter}
+            >
+              + Add Entry
+            </button>
             {selectedTopic && <span style={{ opacity: 0.7 }}>({selectedTopic.title})</span>}
           </div>
 
-          {showForm && (
-            <div style={{ border: '1px solid #ccc', padding: 12, marginBottom: 12 }}>
-              <h3>{editingEntry ? 'Edit Entry' : 'Add Entry'}</h3>
-              <input
-                type="text"
-                placeholder="Summary (1–280 chars)"
-                value={summary}
-                onChange={e => setSummary(e.target.value)}
-                style={{ display: 'block', marginBottom: 8, width: '100%' }}
-              />
-              <input
-                type="text"
-                placeholder="Article Link (https://…)"
-                value={linkUrl}
-                onChange={e => setLinkUrl(e.target.value)}
-                style={{ display: 'block', marginBottom: 8, width: '100%' }}
-              />
-              <input
-                type="text"
-                placeholder="Source Name"
-                value={sourceName}
-                onChange={e => setSourceName(e.target.value)}
-                style={{ display: 'block', marginBottom: 8, width: '100%' }}
-              />
-              <input
-                type="number"
-                placeholder="Ordinal"
-                value={ordinal}
-                onChange={e => setOrdinal(e.target.value)}
-                style={{ display: 'block', marginBottom: 8, width: '100%' }}
-              />
-              <input
-                type="file"
-                accept="image/*,video/*"
-                onChange={e => setMedia(e.target.files[0])}
-                style={{ display: 'block', marginBottom: 8 }}
-              />
-              <button onClick={submitEntry}>Save</button>{' '}
-              <button onClick={() => setShowForm(false)}>Cancel</button>
+          {entryForm && (
+            <div style={{ border: '1px solid #aaa', padding: 12, marginBottom: 20 }}>
+              <h3>{entryForm._id ? 'Edit Entry' : 'New Entry'}</h3>
+              <div style={{ display: 'grid', gap: 8, maxWidth: 600 }}>
+                <label>Title
+                  <input
+                    type="text"
+                    value={entryForm.title}
+                    onChange={e => setEntryForm({ ...entryForm, title: e.target.value })}
+                    style={{ width: '100%' }}
+                  />
+                </label>
+                <label>Summary
+                  <textarea
+                    value={entryForm.summary}
+                    onChange={e => setEntryForm({ ...entryForm, summary: e.target.value })}
+                    style={{ width: '100%' }}
+                    rows={3}
+                  />
+                </label>
+                <label>Link
+                  <input
+                    type="text"
+                    value={entryForm.linkUrl}
+                    onChange={e => setEntryForm({ ...entryForm, linkUrl: e.target.value })}
+                    style={{ width: '100%' }}
+                  />
+                </label>
+                <label>Source
+                  <input
+                    type="text"
+                    value={entryForm.sourceName}
+                    onChange={e => setEntryForm({ ...entryForm, sourceName: e.target.value })}
+                  />
+                </label>
+                <label>Ordinal
+                  <input
+                    type="number"
+                    value={entryForm.ordinal}
+                    onChange={e => setEntryForm({ ...entryForm, ordinal: Number(e.target.value) })}
+                  />
+                </label>
+                <label>Upload Media
+                  <input
+                    type="file"
+                    accept="image/*,video/*"
+                    onChange={e => setEntryForm({ ...entryForm, media: e.target.files[0] })}
+                  />
+                </label>
+              </div>
+              <div style={{ marginTop: 10 }}>
+                <button onClick={saveEntry}>Save</button>{' '}
+                <button onClick={() => setEntryForm(null)}>Cancel</button>
+              </div>
             </div>
           )}
 
           <table width="100%" border="1" cellPadding="8" style={{ borderCollapse: 'collapse' }}>
             <thead>
-              <tr><th>Summary</th><th>Source</th><th>Link</th><th>Media</th><th>Ordinal</th><th>Updated</th><th>Actions</th></tr>
+              <tr><th>Title</th><th>Summary</th><th>Source</th><th>Link</th><th>Media</th><th>Ordinal</th><th>Updated</th><th>Actions</th></tr>
             </thead>
             <tbody>
               {entries.map(e => (
                 <tr key={e._id}>
-                  <td style={{ maxWidth: 420 }}>{e.summary}</td>
+                  <td>{e.title}</td>
+                  <td style={{ maxWidth: 280 }}>{e.summary}</td>
                   <td>{e.sourceName || '-'}</td>
                   <td><a href={e.linkUrl} target="_blank" rel="noreferrer">Open</a></td>
                   <td>
@@ -273,7 +267,7 @@ export default function LiveUpdatesManager() {
                   <td>{e.ordinal}</td>
                   <td>{new Date(e.updatedAt).toLocaleString()}</td>
                   <td>
-                    <button onClick={() => openForm(e)}>Edit</button>{' '}
+                    <button onClick={() => setEntryForm(e)}>Edit</button>{' '}
                     <button onClick={() => deleteEntry(e)}>Delete</button>
                   </td>
                 </tr>
@@ -302,7 +296,7 @@ export default function LiveUpdatesManager() {
                 onChange={async e => {
                   const file = e.target.files[0];
                   if (file) {
-                    await patchFormData(`${API}/api/live/banner`, { media: file });
+                    await uploadFormData(`${API}/api/live/banner`, { media: file }, 'PATCH');
                     refresh();
                   }
                 }}
