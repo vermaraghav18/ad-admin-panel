@@ -6,27 +6,40 @@ function LiveBannerManager() {
   const [position, setPosition] = useState(1);
   const [banners, setBanners] = useState([]);
 
-  const API_BASE = process.env.REACT_APP_API_URL + '/live-banners';
+  // ✅ Use REACT_APP_API_BASE from .env
+  const API_BASE = process.env.REACT_APP_API_BASE + '/api/live-banners';
 
   useEffect(() => {
     fetchBanners();
   }, []);
 
   const fetchBanners = async () => {
-    const res = await axios.get(API_BASE);
-    setBanners(res.data);
+    try {
+      const res = await axios.get(API_BASE);
+      setBanners(res.data);
+    } catch (err) {
+      console.error('Error fetching live banners:', err);
+    }
   };
 
   const addBanner = async () => {
-    await axios.post(API_BASE, { imageUrl, position });
-    setImageUrl('');
-    setPosition(1);
-    fetchBanners();
+    try {
+      await axios.post(API_BASE, { imageUrl, position });
+      setImageUrl('');
+      setPosition(1);
+      fetchBanners();
+    } catch (err) {
+      console.error('Error adding banner:', err);
+    }
   };
 
   const deleteBanner = async (id) => {
-    await axios.delete(`${API_BASE}/${id}`);
-    fetchBanners();
+    try {
+      await axios.delete(`${API_BASE}/${id}`);
+      fetchBanners();
+    } catch (err) {
+      console.error('Error deleting banner:', err);
+    }
   };
 
   return (
