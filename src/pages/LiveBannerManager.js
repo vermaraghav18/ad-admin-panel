@@ -1,50 +1,33 @@
 // src/pages/LiveBannerManager.js
+/* eslint-disable no-alert */
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
 const API_BASE =
   process.env.REACT_APP_API_BASE || "https://ad-server-qx62.onrender.com";
 
-/* ---------------- Helpers & factories ---------------- */
-
+/* ---------------- Factories ---------------- */
 const emptyArticle = () => ({
   type: "news",
   title: "",
   description: "",
   sourceName: "",
   link: "",
-  // image handled through <input type="file">
 });
 
 const emptyBanner = () => ({
-  enabled: false,
-  placementIndex: 1,
   headline: "",
-  // media handled through <input type="file">
+  placementIndex: 1,
+  enabled: false,
 });
 
-// sanitize & enforce required article fields
-function cleanArticle(fields) {
-  return {
-    type: (fields.type || "news").trim(),
-    title: (fields.title || "").trim(),
-    description: (fields.description || "").trim(),
-    sourceName: (fields.sourceName || "").trim(),
-    link: (fields.link || "").trim(),
-  };
-}
-
-/* ---------------- Page: LiveBannerManager ---------------- */
-
+/* ---------------- Page ---------------- */
 export default function LiveBannerManager() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // create form state
   const [creating, setCreating] = useState(false);
   const [newBanner, setNewBanner] = useState(emptyBanner());
   const [newMediaFile, setNewMediaFile] = useState(null);
-
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -65,14 +48,13 @@ export default function LiveBannerManager() {
     }
   }
 
-  // Create banner (JSON), then optional media upload
+  // Create banner (JSON) then optional media upload
   async function createBanner(e) {
     e.preventDefault();
     setCreating(true);
     try {
       const { data } = await axios.post(`${API_BASE}/api/live-banners`, newBanner);
-      const created = data; // {_id, ...}
-
+      const created = data;
       if (newMediaFile) {
         const fd = new FormData();
         fd.append("media", newMediaFile);
@@ -80,7 +62,6 @@ export default function LiveBannerManager() {
           headers: { "Content-Type": "multipart/form-data" },
         });
       }
-
       setNewBanner(emptyBanner());
       setNewMediaFile(null);
       await fetchAll();
@@ -128,12 +109,11 @@ export default function LiveBannerManager() {
     }
   }
 
-  // ---- Section (heading) helpers ----
+  // ---- Section helpers (server owns the array) ----
   async function addSection(id, heading) {
-    const h = (heading || "").trim();
-    if (!h) return alert("Heading required");
+    if (!heading.trim()) return alert("Heading required");
     try {
-      await axios.post(`${API_BASE}/api/live-banners/${id}/sections`, { heading: h });
+      await axios.post(`${API_BASE}/api/live-banners/${id}/sections`, { heading });
       await fetchAll();
     } catch (e) {
       console.error(e);
@@ -164,17 +144,13 @@ export default function LiveBannerManager() {
     }
   }
 
-  // ---- Article helpers (JSON or multipart if image provided) ----
+  // ---- Article helpers (JSON or multipart when image provided) ----
   async function addArticle(id, sIdx, fields, imageFile) {
-    const clean = cleanArticle(fields);
-    if (!clean.title) {
-      alert("Please enter the article title");
-      return;
-    }
     try {
+      if (!fields.title.trim()) return alert("Article title is required");
       if (imageFile) {
         const fd = new FormData();
-        Object.entries(clean).forEach(([k, v]) => fd.append(k, v));
+        Object.entries(fields).forEach(([k, v]) => fd.append(k, v ?? ""));
         fd.append("image", imageFile);
         await axios.post(
           `${API_BASE}/api/live-banners/${id}/sections/${sIdx}/articles`,
@@ -184,7 +160,7 @@ export default function LiveBannerManager() {
       } else {
         await axios.post(
           `${API_BASE}/api/live-banners/${id}/sections/${sIdx}/articles`,
-          clean
+          fields
         );
       }
       await fetchAll();
@@ -195,15 +171,10 @@ export default function LiveBannerManager() {
   }
 
   async function updateArticle(id, sIdx, aIdx, fields, imageFile) {
-    const clean = cleanArticle(fields);
-    if (!clean.title) {
-      alert("Please enter the article title");
-      return;
-    }
     try {
       if (imageFile) {
         const fd = new FormData();
-        Object.entries(clean).forEach(([k, v]) => fd.append(k, v));
+        Object.entries(fields).forEach(([k, v]) => fd.append(k, v ?? ""));
         fd.append("image", imageFile);
         await axios.patch(
           `${API_BASE}/api/live-banners/${id}/sections/${sIdx}/articles/${aIdx}`,
@@ -213,7 +184,7 @@ export default function LiveBannerManager() {
       } else {
         await axios.patch(
           `${API_BASE}/api/live-banners/${id}/sections/${sIdx}/articles/${aIdx}`,
-          clean
+          fields
         );
       }
       await fetchAll();
@@ -236,13 +207,11 @@ export default function LiveBannerManager() {
     }
   }
 
-  /* ------------- UI ------------- */
-
   return (
     <div style={{ padding: 16 }}>
       <h2>📡 Live Banners</h2>
 
-      {/* Create form */}
+      {/* Create banner */}
       <form
         onSubmit={createBanner}
         style={{
@@ -309,7 +278,7 @@ export default function LiveBannerManager() {
         </div>
       </form>
 
-      {/* List existing banners */}
+      {/* Existing banners */}
       {loading ? (
         <p>Loading…</p>
       ) : error ? (
@@ -338,7 +307,6 @@ export default function LiveBannerManager() {
 }
 
 /* ---------------- Banner Card ---------------- */
-
 function BannerCard({
   banner,
   onSavePartial,
@@ -358,8 +326,8 @@ function BannerCard({
   });
 
   const [newHeading, setNewHeading] = useState("");
-  const [newArticleIdx, setNewArticleIdx] = useState(-1); // which section is adding a new article
-  const [editArticle, setEditArticle] = useState(null); // {sIdx, aIdx, data, imageFile}
+  const [newArticleIdx, setNewArticleIdx] = useState(-1);
+  const [editArticle, setEditArticle] = useState(null); // {sIdx,aIdx,data,imageFile}
 
   function saveBasics() {
     onSavePartial(banner._id, {
@@ -419,9 +387,7 @@ function BannerCard({
           <input
             type="file"
             accept="image/*,video/*"
-            onChange={(e) =>
-              onUploadMedia(banner._id, e.target.files?.[0] || null)
-            }
+            onChange={(e) => onUploadMedia(banner._id, e.target.files?.[0] || null)}
           />
           {banner.mediaUrl ? (
             <div style={{ marginTop: 6 }}>
@@ -602,7 +568,7 @@ function BannerCard({
           />
           <button
             onClick={() => {
-              addSection(banner._id, newHeading.trim());
+              onAddSection(banner._id, newHeading.trim());
               setNewHeading("");
             }}
           >
@@ -614,8 +580,7 @@ function BannerCard({
   );
 }
 
-/* ---------------- Small subcomponents ---------------- */
-
+/* ---------------- Reusable forms ---------------- */
 function InlineAddArticleForm({ onSubmit }) {
   const [data, setData] = useState(emptyArticle());
   const [file, setFile] = useState(null);
@@ -648,7 +613,6 @@ function ArticleForm({ data, onChange, imageFile, onImageChange }) {
     <div style={{ display: "grid", gap: 6 }}>
       <input
         type="text"
-        required
         placeholder="Title"
         value={data.title}
         onChange={(e) => onChange({ ...data, title: e.target.value })}
