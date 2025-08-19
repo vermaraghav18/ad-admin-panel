@@ -4,9 +4,7 @@ import axios from "axios";
 function LiveBannerManager() {
   const [file, setFile] = useState(null);
   const [headline, setHeadline] = useState("");
-  const [articles, setArticles] = useState([
-    { title: "", description: "", image: "", sourceName: "", sourceLink: "" },
-  ]);
+  const [articles, setArticles] = useState([]);
   const [banners, setBanners] = useState([]);
 
   const API_BASE =
@@ -27,32 +25,29 @@ function LiveBannerManager() {
     }
   };
 
-  const handleArticleChange = (index, field, value) => {
+  const addArticle = () => {
+    setArticles([
+      ...articles,
+      { title: "", description: "", sourceName: "", sourceLink: "" },
+    ]);
+  };
+
+  const updateArticle = (index, field, value) => {
     const updated = [...articles];
     updated[index][field] = value;
     setArticles(updated);
   };
 
-  const addArticleField = () => {
-    setArticles([
-      ...articles,
-      { title: "", description: "", image: "", sourceName: "", sourceLink: "" },
-    ]);
-  };
-
-  const removeArticleField = (index) => {
-    const updated = [...articles];
-    updated.splice(index, 1);
-    setArticles(updated);
+  const removeArticle = (index) => {
+    setArticles(articles.filter((_, i) => i !== index));
   };
 
   const addBanner = async () => {
-    if (!file) return alert("Please select an image file");
-    if (!headline.trim()) return alert("Headline is required");
+    if (!file) return alert("Please select a banner image");
 
     try {
       const formData = new FormData();
-      formData.append("image", file); // multer field name
+      formData.append("image", file); // banner image only
       formData.append("headline", headline);
       formData.append("articles", JSON.stringify(articles));
 
@@ -62,9 +57,7 @@ function LiveBannerManager() {
 
       setFile(null);
       setHeadline("");
-      setArticles([
-        { title: "", description: "", image: "", sourceName: "", sourceLink: "" },
-      ]);
+      setArticles([]);
       fetchBanners();
     } catch (err) {
       console.error("Error adding banner:", err);
@@ -86,7 +79,11 @@ function LiveBannerManager() {
     <div>
       <h2>Live Banner Manager</h2>
 
-      <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+      <input
+        type="file"
+        accept="image/*"
+        onChange={(e) => setFile(e.target.files?.[0] || null)}
+      />
       <input
         type="text"
         placeholder="Headline"
@@ -95,72 +92,64 @@ function LiveBannerManager() {
         style={{ marginLeft: 8 }}
       />
 
-      <h3 style={{ marginTop: 16 }}>Articles</h3>
-      {articles.map((article, idx) => (
+      <h3>Articles</h3>
+      {articles.map((a, idx) => (
         <div
           key={idx}
-          style={{ border: "1px solid #ccc", padding: 10, marginBottom: 10 }}
+          style={{
+            marginBottom: 12,
+            padding: 8,
+            border: "1px solid #ccc",
+            borderRadius: 6,
+          }}
         >
           <input
             type="text"
             placeholder="Title"
-            value={article.title}
-            onChange={(e) => handleArticleChange(idx, "title", e.target.value)}
+            value={a.title}
+            onChange={(e) => updateArticle(idx, "title", e.target.value)}
             style={{ display: "block", marginBottom: 6 }}
           />
           <textarea
             placeholder="Description"
-            value={article.description}
-            onChange={(e) =>
-              handleArticleChange(idx, "description", e.target.value)
-            }
+            value={a.description}
+            onChange={(e) => updateArticle(idx, "description", e.target.value)}
             style={{ display: "block", marginBottom: 6, width: "100%" }}
           />
           <input
             type="text"
-            placeholder="Image URL"
-            value={article.image}
-            onChange={(e) => handleArticleChange(idx, "image", e.target.value)}
-            style={{ display: "block", marginBottom: 6 }}
-          />
-          <input
-            type="text"
             placeholder="Source Name"
-            value={article.sourceName}
-            onChange={(e) =>
-              handleArticleChange(idx, "sourceName", e.target.value)
-            }
+            value={a.sourceName}
+            onChange={(e) => updateArticle(idx, "sourceName", e.target.value)}
             style={{ display: "block", marginBottom: 6 }}
           />
           <input
             type="text"
             placeholder="Source Link"
-            value={article.sourceLink}
-            onChange={(e) =>
-              handleArticleChange(idx, "sourceLink", e.target.value)
-            }
+            value={a.sourceLink}
+            onChange={(e) => updateArticle(idx, "sourceLink", e.target.value)}
             style={{ display: "block", marginBottom: 6 }}
           />
-          <button onClick={() => removeArticleField(idx)}>Remove Article</button>
+          <button onClick={() => removeArticle(idx)}>Remove Article</button>
         </div>
       ))}
 
-      <button onClick={addArticleField} style={{ marginTop: 8 }}>
+      <button onClick={addArticle} style={{ marginTop: 8 }}>
         + Add Another Article
       </button>
+
       <br />
       <button onClick={addBanner} style={{ marginTop: 12 }}>
         Upload Banner
       </button>
 
-      <h3 style={{ marginTop: 24 }}>Existing Banners</h3>
-      <ul style={{ marginTop: 16 }}>
+      <ul style={{ marginTop: 20 }}>
         {banners.map((b) => (
           <li key={b._id} style={{ marginBottom: 12 }}>
             <img
               src={b.mediaUrl}
               alt="banner"
-              width="180"
+              width="200"
               style={{ display: "block", marginBottom: 6 }}
             />
             <strong>{b.headline}</strong>
