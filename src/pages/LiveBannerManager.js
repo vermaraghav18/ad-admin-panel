@@ -573,14 +573,22 @@ function BannerCard({
 
         {/* Add section */}
         <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-          <input
-            type="text"
-            placeholder="New section heading"
-            value={newHeading}
-            onChange={(e) => setNewHeading(e.target.value)}
-          />
-          <button onClick={() => addSection(banner._id, newHeading)}>Add Section</button>
-        </div>
+  <input
+    type="text"
+    placeholder="New section heading"
+    value={newHeading}
+    onChange={(e) => setNewHeading(e.target.value)}
+  />
+  <button
+    onClick={() => {
+      onAddSection(banner._id, newHeading.trim());
+      setNewHeading(""); // clear input after add
+    }}
+  >
+    Add Section
+  </button>
+</div>
+
       </div>
     </div>
   );
