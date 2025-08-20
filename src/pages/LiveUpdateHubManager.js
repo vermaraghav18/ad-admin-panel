@@ -32,7 +32,15 @@ export default function LiveUpdateHubManager() {
   });
 
   // Entry form state (per section)
-  const initialEntryForm = { title: "", description: "", targetUrl: "", sortIndex: 0, enabled: true, media: null };
+  const initialEntryForm = {
+    title: "",
+    description: "",
+    targetUrl: "",
+    sortIndex: 0,
+    enabled: true,
+    media: null,
+    source: "", // ✅ include source in initial form state
+  };
   const [entryForms, setEntryForms] = useState({}); // { [sectionId]: { ...fields } }
 
   const grouped = useMemo(() => {
@@ -181,6 +189,7 @@ export default function LiveUpdateHubManager() {
       fd.append("title", (form.title || "").trim());
       fd.append("description", (form.description || "").trim());
       if (form.targetUrl) fd.append("targetUrl", form.targetUrl.trim());
+      if (form.source) fd.append("source", form.source.trim()); // ✅ send source
       fd.append("sortIndex", String(Number(form.sortIndex) || 0));
       fd.append("enabled", String(!!form.enabled));
 
@@ -353,7 +362,9 @@ export default function LiveUpdateHubManager() {
                               </div>
                               <div className="text-xs text-gray-600 line-clamp-1">{e.description}</div>
                               <div className="text-xs text-gray-600">
-                                sortIndex: {e.sortIndex} {e.targetUrl ? <>• <a href={e.targetUrl} target="_blank" rel="noreferrer" className="underline">link</a></> : null}
+                                sortIndex: {e.sortIndex}
+                                {e.targetUrl ? <> • <a href={e.targetUrl} target="_blank" rel="noreferrer" className="underline">link</a></> : null}
+                                {e.source ? <> • source: <span className="italic">{e.source}</span></> : null} {/* ✅ show source */}
                               </div>
                             </div>
                           </div>
@@ -390,6 +401,7 @@ export default function LiveUpdateHubManager() {
                         required
                       />
                     </label>
+
                     <label className="flex flex-col">
                       <span className="text-sm">Target URL (optional)</span>
                       <input
@@ -399,6 +411,18 @@ export default function LiveUpdateHubManager() {
                         placeholder="https://example.com"
                       />
                     </label>
+
+                    {/* ✅ NEW: Source */}
+                    <label className="flex flex-col">
+                      <span className="text-sm">Source (e.g., Reuters)</span>
+                      <input
+                        className="border p-2 rounded"
+                        value={entryForms[s._id]?.source || ""}
+                        onChange={(e) => onEntryField(s._id, "source", e.target.value)}
+                        placeholder="BBC, Reuters, ANI, etc."
+                      />
+                    </label>
+
                     <label className="flex flex-col">
                       <span className="text-sm">Sort Index</span>
                       <input
