@@ -262,7 +262,7 @@ export default function LiveUpdateHubManager() {
           </label>
           <label className="flex flex-col">
             <span className="text-sm">Heading (display)</span>
-            <input className="border p-2 rounded" value={heading} onChange={(e) => setHeading(e.target.value)} placeholder="Live Updates" required />
+            <input className="border p-2 rounded" value={heading} onChange={(e) => setHeading(e.target.value)} placeholder="More Updates For You" required />
           </label>
           <label className="flex flex-col">
             <span className="text-sm">Placement Index</span>
