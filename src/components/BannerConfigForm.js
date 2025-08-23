@@ -1,26 +1,24 @@
 import React, { useEffect, useMemo, useState } from 'react';
 
-const API_BASE = process.env.REACT_APP_API_BASE || 'https://ad-server-qx62.onrender.com';
-
+const API_BASE = (process.env.REACT_APP_API_BASE || 'https://ad-server-qx62.onrender.com').replace(/\/$/, '');
 const modes = ['ad', 'news', 'empty'];
 
 export default function BannerConfigForm({ initial, onSaved, onCancel }) {
   const [mode, setMode] = useState(initial?.mode ?? 'empty');
   const [startAfter, setStartAfter] = useState(initial?.startAfter ?? 0);
   const [repeatEvery, setRepeatEvery] = useState(
-    initial?.repeatEvery === null || initial?.repeatEvery === undefined
-      ? ''
-      : String(initial?.repeatEvery)
+    initial?.repeatEvery === null || initial?.repeatEvery === undefined ? '' : String(initial?.repeatEvery)
   );
   const [priority, setPriority] = useState(initial?.priority ?? 100);
   const [isActive, setIsActive] = useState(initial?.isActive ?? true);
   const [activeFrom, setActiveFrom] = useState(initial?.activeFrom ? isoLocal(initial.activeFrom) : '');
   const [activeTo, setActiveTo] = useState(initial?.activeTo ? isoLocal(initial.activeTo) : '');
 
-  // content fields
-  const [imageUrl, setImageUrl] = useState(initial?.imageUrl || '');
-  const [customNewsId, setCustomNewsId] = useState(initial?.customNewsId || '');
-  const [message, setMessage] = useState(initial?.message || 'Tap to read more');
+  // content
+  const [imageFile, setImageFile] = useState(null);            // AD file
+  const [imageUrl, setImageUrl] = useState(initial?.imageUrl || ''); // optional URL fallback
+  const [customNewsId, setCustomNewsId] = useState(initial?.customNewsId || ''); // NEWS
+  const [message, setMessage] = useState(initial?.message || 'Tap to read more'); // EMPTY
 
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
@@ -40,7 +38,7 @@ export default function BannerConfigForm({ initial, onSaved, onCancel }) {
         const data = ct.includes('application/json') ? JSON.parse(txt) : { error: txt };
         if (!res.ok) throw new Error(data.error || `Failed (${res.status})`);
         if (!cancelled) setNewsOptions(Array.isArray(data) ? data : []);
-      } catch (e) {
+      } catch {
         if (!cancelled) setNewsOptions([]);
       } finally {
         if (!cancelled) setLoadingNews(false);
@@ -49,16 +47,13 @@ export default function BannerConfigForm({ initial, onSaved, onCancel }) {
     return () => { cancelled = true; };
   }, [mode]);
 
-  const preview = useMemo(() => {
-    // minimal preview content for 16:4
-    return { mode, imageUrl, message, customNewsId };
-  }, [mode, imageUrl, message, customNewsId]);
+  const preview = useMemo(() => ({ mode, imageUrl, message, customNewsId }), [mode, imageUrl, message, customNewsId]);
 
   function validate() {
     if (!modes.includes(mode)) return 'Invalid mode';
     if (startAfter < 0) return 'startAfter must be ≥ 0';
     if (repeatEvery !== '' && Number(repeatEvery) < 1) return 'repeatEvery must be ≥ 1 or blank';
-    if (mode === 'ad' && !imageUrl) return 'imageUrl is required for Ad mode';
+    if (mode === 'ad' && !imageFile && !imageUrl) return 'Please upload an image or provide imageUrl';
     if (mode === 'news' && !customNewsId) return 'Please choose a Custom News item';
     return '';
   }
@@ -67,33 +62,45 @@ export default function BannerConfigForm({ initial, onSaved, onCancel }) {
     e.preventDefault();
     const v = validate();
     if (v) { setErr(v); return; }
-    setErr('');
-    setSaving(true);
+    setErr(''); setSaving(true);
+
     try {
-      const body = {
-        mode,
-        startAfter: toInt(startAfter),
-        repeatEvery: repeatEvery === '' ? null : toInt(repeatEvery),
-        priority: toInt(priority),
-        isActive,
-        activeFrom: activeFrom || null,
-        activeTo: activeTo || null,
-        imageUrl: mode === 'ad' ? imageUrl : undefined,
-        customNewsId: mode === 'news' ? customNewsId : undefined,
-        message: mode === 'empty' ? message : undefined,
-      };
-
       const isEdit = !!initial?._id;
-      const url = isEdit
-        ? `${API_BASE}/api/banner-configs/${initial._id}`
-        : `${API_BASE}/api/banner-configs`;
-      const method = isEdit ? 'PUT' : 'POST';
+      const url = isEdit ? `${API_BASE}/api/banner-configs/${initial._id}` : `${API_BASE}/api/banner-configs`;
+      let res;
 
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
+      if (mode === 'ad' && imageFile) {
+        // multipart for Cloudinary upload
+        const form = new FormData();
+        form.append('mode', mode);
+        form.append('startAfter', String(startAfter));
+        form.append('repeatEvery', repeatEvery === '' ? '' : String(repeatEvery));
+        form.append('priority', String(priority));
+        form.append('isActive', String(isActive));
+        if (activeFrom) form.append('activeFrom', activeFrom);
+        if (activeTo)   form.append('activeTo', activeTo);
+        form.append('image', imageFile);
+
+        const method = isEdit ? 'PUT' : 'POST';
+        res = await fetch(url, { method, body: form });
+      } else {
+        // JSON
+        const body = {
+          mode,
+          startAfter: toInt(startAfter),
+          repeatEvery: repeatEvery === '' ? null : toInt(repeatEvery),
+          priority: toInt(priority),
+          isActive,
+          activeFrom: activeFrom || null,
+          activeTo: activeTo || null,
+          imageUrl: mode === 'ad' ? imageUrl : undefined,
+          customNewsId: mode === 'news' ? customNewsId : undefined,
+          message: mode === 'empty' ? message : undefined,
+        };
+        const method = isEdit ? 'PUT' : 'POST';
+        res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      }
+
       const ct = res.headers.get('content-type') || '';
       const txt = await res.text();
       const data = ct.includes('application/json') ? JSON.parse(txt) : { error: txt };
@@ -149,11 +156,38 @@ export default function BannerConfigForm({ initial, onSaved, onCancel }) {
 
       {/* Content by mode */}
       {mode === 'ad' && (
-        <div className="max-w-xl">
+        <div className="max-w-xl space-y-2">
           <label className="flex flex-col">
-            <span className="text-sm">Ad imageUrl (required)</span>
-            <input type="url" className="input" placeholder="https://…" value={imageUrl} onChange={e => setImageUrl(e.target.value)} required />
+            <span className="text-sm">Upload Ad image (Cloudinary)</span>
+            <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files?.[0] || null)} />
+            <span className="text-xs opacity-70 mt-1">
+              If you don’t upload a file, you may provide an image URL instead.
+            </span>
           </label>
+
+          {!imageFile && (
+            <label className="flex flex-col">
+              <span className="text-sm">Or imageUrl (optional)</span>
+              <input
+                type="url"
+                className="input"
+                placeholder="https://…"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+              />
+            </label>
+          )}
+
+          {(imageFile || imageUrl) && (
+            <div className="mt-2">
+              <div className="text-xs opacity-70 mb-1">Preview</div>
+              <img
+                src={imageFile ? URL.createObjectURL(imageFile) : imageUrl}
+                alt=""
+                style={{ maxWidth: 320, maxHeight: 120, objectFit: 'cover', borderRadius: 8 }}
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -161,20 +195,10 @@ export default function BannerConfigForm({ initial, onSaved, onCancel }) {
         <div className="max-w-xl">
           <label className="flex flex-col">
             <span className="text-sm">Custom News item</span>
-            <select
-              className="input"
-              value={customNewsId}
-              onChange={e => setCustomNewsId(e.target.value)}
-              disabled={loadingNews}
-            >
+            <select className="input" value={customNewsId} onChange={e => setCustomNewsId(e.target.value)} disabled={loadingNews}>
               <option value="">Select…</option>
-              {newsOptions.map(n => (
-                <option key={n._id} value={n._id}>{n.title}</option>
-              ))}
+              {newsOptions.map(n => <option key={n._id} value={n._id}>{n.title}</option>)}
             </select>
-            <span className="text-xs opacity-70 mt-1">
-              List comes from /api/custom-news (active items).
-            </span>
           </label>
         </div>
       )}
@@ -188,24 +212,25 @@ export default function BannerConfigForm({ initial, onSaved, onCancel }) {
         </div>
       )}
 
-      {/* Preview (16:4) */}
+      {/* 16:4 preview */}
       <div className="mt-2">
-        <div className="text-sm mb-1">Preview</div>
+        <div className="text-sm mb-1">Preview (16:4)</div>
         <div className="p-3 border rounded max-w-3xl">
           <div style={{ aspectRatio: '16 / 4' }} className="w-full">
             <div className="w-full h-full rounded-2xl overflow-hidden relative" style={{ background: '#222' }}>
-              {/* bg image for ad */}
-              {preview.mode === 'ad' && preview.imageUrl && (
-                <img src={preview.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-60" />
+              {preview.mode === 'ad' && (imageFile || preview.imageUrl) && (
+                <img
+                  src={imageFile ? URL.createObjectURL(imageFile) : preview.imageUrl}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover opacity-60"
+                />
               )}
-              {/* overlay */}
               <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.35)' }} />
-              {/* text */}
               <div className="relative w-full h-full flex items-center justify-center px-4">
                 <div className="text-white text-sm font-semibold text-center line-clamp-2">
-                  {preview.mode === 'ad' && 'Ad banner (taps open Custom News)'}
-                  {preview.mode === 'news' && 'News banner (taps open Custom News)'}
-                  {preview.mode === 'empty' && (message || 'Tap to read more')}
+                  {preview.mode === 'ad' && 'Ad banner (tap opens Custom News)'}
+                  {preview.mode === 'news' && 'News banner (tap opens Custom News)'}
+                  {preview.mode === 'empty' && (preview.message || 'Tap to read more')}
                 </div>
               </div>
             </div>
@@ -217,28 +242,12 @@ export default function BannerConfigForm({ initial, onSaved, onCancel }) {
       {err && <div className="text-red-600">{err}</div>}
 
       <div className="flex gap-2 mt-3">
-        <button className="btn" disabled={saving}>
-          {saving ? 'Saving…' : (initial?._id ? 'Update' : 'Create')}
-        </button>
+        <button className="btn" disabled={saving}>{saving ? 'Saving…' : (initial?._id ? 'Update' : 'Create')}</button>
         <button type="button" className="btn border" onClick={onCancel}>Cancel</button>
       </div>
     </form>
   );
 }
 
-function toInt(v) {
-  const n = typeof v === 'string' ? parseInt(v, 10) : v;
-  return Number.isNaN(n) ? null : n;
-}
-function isoLocal(d) {
-  // handles both Date objects and ISO strings
-  const dt = typeof d === 'string' ? new Date(d) : d;
-  if (isNaN(+dt)) return '';
-  const pad = (x) => String(x).padStart(2, '0');
-  const yyyy = dt.getFullYear();
-  const mm = pad(dt.getMonth() + 1);
-  const dd = pad(dt.getDate());
-  const hh = pad(dt.getHours());
-  const mi = pad(dt.getMinutes());
-  return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
-}
+function toInt(v) { const n = typeof v === 'string' ? parseInt(v, 10) : v; return Number.isNaN(n) ? null : n; }
+function isoLocal(d) { const dt = typeof d === 'string' ? new Date(d) : d; if (isNaN(+dt)) return ''; const p=(x)=>String(x).padStart(2,'0'); return `${dt.getFullYear()}-${p(dt.getMonth()+1)}-${p(dt.getDate())}T${p(dt.getHours())}:${p(dt.getMinutes())}`; }
