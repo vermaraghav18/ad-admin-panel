@@ -12,6 +12,7 @@ import CustomNewsManagerPage from './pages/CustomNewsManagerPage'; // ✅ Custom
 import LiveBannerManager from './pages/LiveBannerManager';
 import BannerWithArticleManager from './pages/BannerWithArticleManager';
 import LiveUpdateHubManager from './pages/LiveUpdateHubManager';
+import BannerManagerPage from './pages/BannerManagerPage';
 
 // ✅ NEW: Small Ads page
 import SmallAdsManager from './pages/SmallAdsManager';
@@ -185,6 +186,7 @@ function App() {
           <Link to="/news-hub" style={{ marginRight: '1rem' }}>🧱 News Hub</Link>
           <Link to="/banners" style={{ marginRight: '1rem' }}>📰 Banners w/ Article</Link>
           <Link to="/custom-news" style={{ marginRight: '1rem' }}>🧪 Custom News</Link>
+          <Link to="/banner-manager" style={{ marginRight: '1rem' }}>🧲 Banner Manager</Link>
           {/* ✅ New nav link */}
           <Link to="/live-update-hub" style={{ marginRight: '1rem' }}>⚡ Live Update Hub</Link>
         </nav>
@@ -202,6 +204,7 @@ function App() {
           <Route path="/live-banners" element={<LiveBannerManager />} />
           <Route path="/banners" element={<BannerWithArticleManager />} />
           <Route path="/live-update-hub" element={<LiveUpdateHubManager />} />
+          <Route path="/banner-manager" element={<BannerManagerPage />} />
           <Route path="*" element={<AdManager />} />
         </Routes>
       </div>
