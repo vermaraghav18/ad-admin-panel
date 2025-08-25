@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
 
-// 🔁 uses your env var
-const API_BASE = process.env.REACT_APP_API_BASE || "http://localhost:8080";
+/* ✅ Use env base and normalize trailing slash */
+const RAW_API_BASE = process.env.REACT_APP_API_BASE || "https://ad-server-qx62.onrender.com";
+const API_BASE = RAW_API_BASE.replace(/\/$/, "");
+const XFEEDS_URL = `${API_BASE}/api/xfeeds`;
 
 export default function XFeedsList() {
   const [items, setItems] = useState([]);
@@ -12,8 +14,12 @@ export default function XFeedsList() {
     setErr("");
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/xfeeds`);
-      if (!res.ok) throw new Error(await res.text());
+      const res = await fetch(XFEEDS_URL);
+      if (!res.ok) {
+        let msg = `${res.status} ${res.statusText}`;
+        try { const j = await res.json(); msg = j.error || j.message || msg; } catch {}
+        throw new Error(msg);
+      }
       const data = await res.json();
       setItems(data);
     } catch (e) {
@@ -27,24 +33,34 @@ export default function XFeedsList() {
 
   const toggle = async (it) => {
     try {
-      await fetch(`${API_BASE}/xfeeds/${it._id}`, {
-        method: "PUT",
+      const res = await fetch(`${XFEEDS_URL}/${it._id}`, {
+        method: "PATCH",                           // ✅ matches router.patch('/:id'…)
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...it, enabled: !it.enabled }),
+        body: JSON.stringify({ enabled: !it.enabled }),
       });
+      if (!res.ok) {
+        let msg = `${res.status} ${res.statusText}`;
+        try { const j = await res.json(); msg = j.error || j.message || msg; } catch {}
+        throw new Error(msg);
+      }
       load();
-    } catch {
-      alert("Update failed");
+    } catch (e) {
+      alert(`Update failed: ${e.message || "Unknown error"}`);
     }
   };
 
   const remove = async (it) => {
     if (!window.confirm(`Delete "${it.name || it.rssUrl}"?`)) return;
     try {
-      await fetch(`${API_BASE}/xfeeds/${it._id}`, { method: "DELETE" });
+      const res = await fetch(`${XFEEDS_URL}/${it._id}`, { method: "DELETE" });
+      if (!res.ok) {
+        let msg = `${res.status} ${res.statusText}`;
+        try { const j = await res.json(); msg = j.error || j.message || msg; } catch {}
+        throw new Error(msg);
+      }
       load();
-    } catch {
-      alert("Delete failed");
+    } catch (e) {
+      alert(`Delete failed: ${e.message || "Unknown error"}`);
     }
   };
 
@@ -68,13 +84,31 @@ export default function XFeedsList() {
           {items.map((it) => (
             <tr key={it._id}>
               <td style={styles.td}>{it.name || "X Feed"}</td>
-              <td style={{ ...styles.td, maxWidth: 420, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                <a href={it.rssUrl} target="_blank" rel="noreferrer">{it.rssUrl}</a>
+              <td
+                style={{
+                  ...styles.td,
+                  maxWidth: 420,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+                title={it.rssUrl}
+              >
+                <a href={it.rssUrl} target="_blank" rel="noreferrer">
+                  {it.rssUrl}
+                </a>
               </td>
               <td style={styles.td}>{it.enabled ? "Yes" : "No"}</td>
               <td style={styles.tdRight}>
-                <button style={styles.smallBtn} onClick={() => toggle(it)}>{it.enabled ? "Disable" : "Enable"}</button>
-                <button style={{ ...styles.smallBtn, background: "#ef4444" }} onClick={() => remove(it)}>Delete</button>
+                <button style={styles.smallBtn} onClick={() => toggle(it)}>
+                  {it.enabled ? "Disable" : "Enable"}
+                </button>
+                <button
+                  style={{ ...styles.smallBtn, background: "#ef4444" }}
+                  onClick={() => remove(it)}
+                >
+                  Delete
+                </button>
               </td>
             </tr>
           ))}

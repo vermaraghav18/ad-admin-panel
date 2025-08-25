@@ -1,7 +1,10 @@
 import React, { useState } from "react";
 
-// 🔁 uses your env var
-const API_BASE = process.env.REACT_APP_API_BASE || "http://localhost:8080";
+/* ✅ Use the same base you have in .env and normalize trailing slash */
+const RAW_API_BASE = process.env.REACT_APP_API_BASE || "https://ad-server-qx62.onrender.com";
+const API_BASE = RAW_API_BASE.replace(/\/$/, "");
+/* ✅ Correct mount path from server.js: app.use('/api/xfeeds', ...) */
+const XFEEDS_URL = `${API_BASE}/api/xfeeds`;
 
 export default function XFeedForm({ onCreated }) {
   const [name, setName] = useState("");
@@ -13,13 +16,15 @@ export default function XFeedForm({ onCreated }) {
   const submit = async (e) => {
     e.preventDefault();
     setError("");
+
     if (!rssUrl.trim()) {
       setError("RSS URL is required");
       return;
     }
+
     setSaving(true);
     try {
-      const res = await fetch(`${API_BASE}/xfeeds`, {
+      const res = await fetch(XFEEDS_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -28,10 +33,25 @@ export default function XFeedForm({ onCreated }) {
           enabled,
         }),
       });
-      if (!res.ok) throw new Error(await res.text());
+
+      if (!res.ok) {
+        // Try to read server JSON error first, then text
+        let msg = `${res.status} ${res.statusText}`;
+        try {
+          const j = await res.json();
+          msg = j.error || j.message || msg;
+        } catch {
+          try { msg = await res.text(); } catch {}
+        }
+        throw new Error(msg);
+      }
+
+      // Reset form
       setName("");
       setRssUrl("");
       setEnabled(true);
+
+      // Let parent refresh list
       onCreated && onCreated();
     } catch (err) {
       setError(err.message || "Failed to create feed");
@@ -49,7 +69,7 @@ export default function XFeedForm({ onCreated }) {
         style={styles.input}
         value={name}
         onChange={(e) => setName(e.target.value)}
-        placeholder="e.g., @OpenAI"
+        placeholder="e.g., Elon Musk"
       />
 
       <label style={styles.label}>RSS URL *</label>
@@ -57,7 +77,7 @@ export default function XFeedForm({ onCreated }) {
         style={styles.input}
         value={rssUrl}
         onChange={(e) => setRssUrl(e.target.value)}
-        placeholder="https://nitter.net/username/rss  or  your proxy URL"
+        placeholder="https://nitter.net/username/rss  (or your proxy URL)"
         required
       />
 
