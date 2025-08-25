@@ -19,6 +19,9 @@ import SmallAdsManager from './pages/SmallAdsManager';
 // ✅ NEW: News Hub page
 import NewsHubManager from './pages/NewsHubManager';
 
+// ✅ NEW: X Feeds admin (add these files earlier)
+import XFeedsManagerPage from './pages/XFeedsManagerPage';
+
 import './App.css';
 
 // ✅ Centralized API base (env first, then Render fallback) with trailing-slash normalization
@@ -181,13 +184,13 @@ function App() {
           <Link to="/shorts" style={{ marginRight: '1rem' }}>▶️ Shorts</Link>
           <Link to="/tweets" style={{ marginRight: '1rem' }}>🐦 Tweets</Link>
           <Link to="/feeds" style={{ marginRight: '1rem' }}>📰 Feeds</Link>
+          <Link to="/x-feeds" style={{ marginRight: '1rem' }}>𝕏 Feeds</Link> {/* ✅ NEW */}
           <Link to="/small-ads" style={{ marginRight: '1rem' }}>🧩 Small Ads</Link>
           <Link to="/live-banners" style={{ marginRight: '1rem' }}>📡 Live Banners</Link>
           <Link to="/news-hub" style={{ marginRight: '1rem' }}>🧱 News Hub</Link>
           <Link to="/banners" style={{ marginRight: '1rem' }}>📰 Banners w/ Article</Link>
           <Link to="/custom-news" style={{ marginRight: '1rem' }}>🧪 Custom News</Link>
           <Link to="/banner-manager" style={{ marginRight: '1rem' }}>🧲 Banner Manager</Link>
-          {/* ✅ New nav link */}
           <Link to="/live-update-hub" style={{ marginRight: '1rem' }}>⚡ Live Update Hub</Link>
         </nav>
 
@@ -198,6 +201,7 @@ function App() {
           <Route path="/shorts" element={<ShortsManagerPage />} />
           <Route path="/tweets" element={<TweetsManagerPage />} />
           <Route path="/feeds" element={<FeedManager />} />
+          <Route path="/x-feeds" element={<XFeedsManagerPage />} /> {/* ✅ NEW */}
           <Route path="/small-ads" element={<SmallAdsManager />} />
           <Route path="/news-hub" element={<NewsHubManager />} />
           <Route path="/custom-news" element={<CustomNewsManagerPage />} />
