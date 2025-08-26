@@ -5,22 +5,24 @@ import axios from 'axios';
 // Existing pages
 import MovieManagerPage from './pages/MovieManagerPage';
 import MoviePromoBannerManager from './pages/MoviePromoBannerManager';
-import FeedManager from './components/FeedManager'; // ✅ Feeds
-import ShortsManagerPage from './pages/ShortsManagerPage'; // ✅ Shorts
-import TweetsManagerPage from './pages/TweetsManagerPage'; // ✅ Tweets
+import FeedManager from './components/FeedManager';          // ✅ Feeds
+import ShortsManagerPage from './pages/ShortsManagerPage';   // ✅ Shorts
+import TweetsManagerPage from './pages/TweetsManagerPage';   // ✅ Tweets
 import CustomNewsManagerPage from './pages/CustomNewsManagerPage'; // ✅ Custom News
 import LiveBannerManager from './pages/LiveBannerManager';
 import BannerWithArticleManager from './pages/BannerWithArticleManager';
 import LiveUpdateHubManager from './pages/LiveUpdateHubManager';
 import BannerManagerPage from './pages/BannerManagerPage';
 
-// ✅ NEW: Small Ads page
+// ✅ Small Ads & News Hub
 import SmallAdsManager from './pages/SmallAdsManager';
-// ✅ NEW: News Hub page
 import NewsHubManager from './pages/NewsHubManager';
 
-// ✅ NEW: X Feeds admin (add these files earlier)
-import XFeedsManagerPage from './pages/XFeedsManagerPage';
+// ✅ NEW: X Feeds admin (single-page manager)
+import XFeedsManager from './pages/XFeedsManager';
+
+// ✅ NEW: Banner Configs (article-anchored injections)
+import BannerConfigsPage from './pages/BannerConfigsPage';
 
 import './App.css';
 
@@ -62,7 +64,7 @@ function AdManager() {
     const isFullPage = type === 'fullpage';
 
     if (!image || !link || (!isFullPage && (!title || !description))) {
-      return alert("All required fields must be filled");
+      return alert('All required fields must be filled');
     }
 
     const formData = new FormData();
@@ -70,7 +72,6 @@ function AdManager() {
     formData.append('link', link);
     formData.append('target', target);
     formData.append('type', type);
-
     if (!isFullPage) {
       formData.append('title', title);
       formData.append('description', description);
@@ -87,8 +88,8 @@ function AdManager() {
       setType('normal');
       fetchAds();
     } catch (err) {
-      console.error("🔥 Upload failed:", err);
-      alert("Upload failed");
+      console.error('🔥 Upload failed:', err);
+      alert('Upload failed');
     } finally {
       setLoading(false);
     }
@@ -141,22 +142,19 @@ function AdManager() {
         </select>
 
         <button type="submit" disabled={loading}>
-          {loading ? "Uploading..." : "Upload Ad"}
+          {loading ? 'Uploading...' : 'Upload Ad'}
         </button>
       </form>
 
       <div className="ads">
         {ads.map(ad => {
-          const id = ad._id || ad.id; // ✅ normalize id for delete/key
+          const id = ad._id || ad.id;
           const imgSrc = ad.imageUrl?.startsWith('http')
             ? ad.imageUrl
             : `${API_BASE}${ad.imageUrl || ''}`;
           return (
             <div key={id} className="ad">
-              <img
-                src={imgSrc}
-                alt={ad.title || 'Ad image'}
-              />
+              <img src={imgSrc} alt={ad.title || 'Ad image'} />
               <h3>{ad.title || '—'}</h3>
               <p><em>{ad.description || '—'}</em></p>
               <p>{ad.link}</p>
@@ -184,13 +182,14 @@ function App() {
           <Link to="/shorts" style={{ marginRight: '1rem' }}>▶️ Shorts</Link>
           <Link to="/tweets" style={{ marginRight: '1rem' }}>🐦 Tweets</Link>
           <Link to="/feeds" style={{ marginRight: '1rem' }}>📰 Feeds</Link>
-          <Link to="/x-feeds" style={{ marginRight: '1rem' }}>𝕏 Feeds</Link> {/* ✅ NEW */}
+          <Link to="/x-feeds" style={{ marginRight: '1rem' }}>𝕏 Feeds</Link> {/* ✅ New v2 only */}
           <Link to="/small-ads" style={{ marginRight: '1rem' }}>🧩 Small Ads</Link>
           <Link to="/live-banners" style={{ marginRight: '1rem' }}>📡 Live Banners</Link>
           <Link to="/news-hub" style={{ marginRight: '1rem' }}>🧱 News Hub</Link>
           <Link to="/banners" style={{ marginRight: '1rem' }}>📰 Banners w/ Article</Link>
           <Link to="/custom-news" style={{ marginRight: '1rem' }}>🧪 Custom News</Link>
           <Link to="/banner-manager" style={{ marginRight: '1rem' }}>🧲 Banner Manager</Link>
+          <Link to="/banner-configs" style={{ marginRight: '1rem' }}>🧲 Banner Configs</Link> {/* ✅ NEW */}
           <Link to="/live-update-hub" style={{ marginRight: '1rem' }}>⚡ Live Update Hub</Link>
         </nav>
 
@@ -201,7 +200,7 @@ function App() {
           <Route path="/shorts" element={<ShortsManagerPage />} />
           <Route path="/tweets" element={<TweetsManagerPage />} />
           <Route path="/feeds" element={<FeedManager />} />
-          <Route path="/x-feeds" element={<XFeedsManagerPage />} /> {/* ✅ NEW */}
+          <Route path="/x-feeds" element={<XFeedsManager />} /> {/* ✅ Only v2 route */}
           <Route path="/small-ads" element={<SmallAdsManager />} />
           <Route path="/news-hub" element={<NewsHubManager />} />
           <Route path="/custom-news" element={<CustomNewsManagerPage />} />
@@ -209,6 +208,7 @@ function App() {
           <Route path="/banners" element={<BannerWithArticleManager />} />
           <Route path="/live-update-hub" element={<LiveUpdateHubManager />} />
           <Route path="/banner-manager" element={<BannerManagerPage />} />
+          <Route path="/banner-configs" element={<BannerConfigsPage />} /> {/* ✅ NEW */}
           <Route path="*" element={<AdManager />} />
         </Routes>
       </div>
