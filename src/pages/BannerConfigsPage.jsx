@@ -53,7 +53,7 @@ export default function BannerConfigsPage() {
   async function fetchAll() {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_BASE}/api/banner-configs`);
+      const res = await axios.get(`${API_BASE}/api/banner-configs`, { headers: { 'Cache-Control': 'no-cache' } });
       setList(res.data || []);
     } catch (e) {
       console.error(e);
@@ -98,8 +98,8 @@ export default function BannerConfigsPage() {
 
       priority: doc.priority ?? 100,
       isActive: !!doc.isActive,
-      activeFrom: doc.activeFrom ? doc.activeFrom.substr(0, 10) : '',
-      activeTo: doc.activeTo ? doc.activeTo.substr(0, 10) : '',
+      activeFrom: doc.activeFrom ? String(doc.activeFrom).slice(0, 10) : '',
+      activeTo: doc.activeTo ? String(doc.activeTo).slice(0, 10) : '',
       message: doc.message || '',
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -109,7 +109,7 @@ export default function BannerConfigsPage() {
     const { name, value, type, checked } = e.target;
     setForm((f) => ({
       ...f,
-      [name]: type === 'checkbox' ? checked : value,
+      [name]: type === 'checkbox' ? checked : (name === 'category' ? value.toLowerCase() : value),
     }));
   }
 
@@ -123,7 +123,7 @@ export default function BannerConfigsPage() {
 
     const payload = {
       headline: form.headline || undefined,
-      imageUrl: form.mode === 'ad' ? (form.imageUrl || undefined) : (form.imageUrl || undefined),
+      imageUrl: form.imageUrl || undefined, // required for ad mode
       clickUrl: form.clickUrl || undefined,
       deeplinkUrl: form.deeplinkUrl || undefined,
       customNewsId: form.mode === 'news' ? (form.customNewsId || undefined) : undefined,
@@ -135,7 +135,10 @@ export default function BannerConfigsPage() {
       payload,
       // legacy-compatible knobs (optional)
       startAfter: form.anchorKind === 'slot' ? Number(form.nth || 10) : undefined,
-      repeatEvery: form.anchorKind === 'slot' && form.repeatEvery ? Number(form.repeatEvery) : undefined,
+      repeatEvery:
+        form.anchorKind === 'slot' && form.repeatEvery !== ''
+          ? Number(form.repeatEvery)
+          : undefined,
       priority: Number(form.priority || 100),
       isActive: !!form.isActive,
       activeFrom: form.activeFrom || undefined,
@@ -208,8 +211,24 @@ export default function BannerConfigsPage() {
       <h2>🧲 Banner Configs (article-anchored)</h2>
 
       {/* --------- Form --------- */}
-      <form onSubmit={onSubmit} style={{ background:'#111', padding:'12px', borderRadius:12, border:'1px solid #222', marginBottom:16 }}>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:12 }}>
+      <form
+        onSubmit={onSubmit}
+        style={{
+          background: 'var(--card)',
+          color: 'var(--fg)',
+          padding: 12,
+          borderRadius: 12,
+          border: '1px solid var(--border)',
+          marginBottom: 16,
+        }}
+      >
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: 12,
+          }}
+        >
           <div>
             <label>Mode</label>
             <select name="mode" value={form.mode} onChange={onChange}>
@@ -236,22 +255,38 @@ export default function BannerConfigsPage() {
               </div>
               <div>
                 <label>Repeat every (optional)</label>
-                <input name="repeatEvery" type="number" value={form.repeatEvery} onChange={onChange} placeholder="e.g. 5" />
+                <input
+                  name="repeatEvery"
+                  type="number"
+                  value={form.repeatEvery}
+                  onChange={onChange}
+                  placeholder="e.g. 5"
+                />
               </div>
             </>
           )}
 
           {form.anchorKind === 'article' && (
-            <div style={{ gridColumn:'1 / -1' }}>
+            <div style={{ gridColumn: '1 / -1' }}>
               <label>Article Key (must match `id` from /api/rss-agg)</label>
-              <input name="articleKey" value={form.articleKey} onChange={onChange} placeholder="sha1 id or link-based id" />
+              <input
+                name="articleKey"
+                value={form.articleKey}
+                onChange={onChange}
+                placeholder="sha1 id or link-based id"
+              />
             </div>
           )}
 
           {form.anchorKind === 'category' && (
             <div>
               <label>Category (lowercase)</label>
-              <input name="category" value={form.category} onChange={onChange} placeholder="e.g. finance, sports" />
+              <input
+                name="category"
+                value={form.category}
+                onChange={onChange}
+                placeholder="e.g. finance, sports"
+              />
             </div>
           )}
 
@@ -259,7 +294,7 @@ export default function BannerConfigsPage() {
             <label>Priority (higher wins)</label>
             <input name="priority" type="number" value={form.priority} onChange={onChange} />
           </div>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <input id="isActive" name="isActive" type="checkbox" checked={form.isActive} onChange={onChange} />
             <label htmlFor="isActive">Active</label>
           </div>
@@ -273,14 +308,15 @@ export default function BannerConfigsPage() {
             <input name="activeTo" type="date" value={form.activeTo} onChange={onChange} />
           </div>
 
-          <div style={{ gridColumn:'1 / -1' }}>
+          <div style={{ gridColumn: '1 / -1' }}>
             <label>Message / Headline (optional)</label>
             <input name="message" value={form.message} onChange={onChange} placeholder="CTA text" />
           </div>
 
           {/* --------- Payload fields --------- */}
-          <div style={{ gridColumn:'1 / -1', marginTop:4, opacity:.85 }}>
-            <strong>Payload</strong> — For <em>ad</em>: imageUrl (required), click/deeplink optional. For <em>news</em>: customNewsId or (headline + click/deeplink).
+          <div style={{ gridColumn: '1 / -1', marginTop: 4, opacity: 0.85 }}>
+            <strong>Payload</strong> — For <em>ad</em>: imageUrl (required), click/deeplink optional. For{' '}
+            <em>news</em>: customNewsId or (headline + click/deeplink).
           </div>
 
           <div>
@@ -316,22 +352,26 @@ export default function BannerConfigsPage() {
           </div>
         </div>
 
-        <div style={{ display:'flex', gap:8, marginTop:12 }}>
-          <button type="submit" disabled={saving} style={{ padding:'8px 12px' }}>
-            {saving ? 'Saving…' : (editingId ? 'Update Banner' : 'Create Banner')}
+        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+          <button type="submit" disabled={saving} style={{ padding: '8px 12px' }}>
+            {saving ? 'Saving…' : editingId ? 'Update Banner' : 'Create Banner'}
           </button>
           {editingId && (
-            <button type="button" onClick={resetForm} style={{ padding:'8px 12px', background:'#222', border:'1px solid #333', color:'#fff' }}>
+            <button
+              type="button"
+              onClick={resetForm}
+              style={{ padding: '8px 12px', background: '#f3f4f6', border: '1px solid var(--border)', color: 'var(--fg)' }}
+            >
               Cancel Edit
             </button>
           )}
         </div>
 
-        {error ? <div style={{ color:'#f87171', marginTop:8 }}>{error}</div> : null}
+        {error ? <div style={{ color: '#b91c1c', marginTop: 8 }}>{error}</div> : null}
       </form>
 
       {/* --------- Filter + list --------- */}
-      <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:8 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
         <label>Filter:</label>
         <select value={filterMode} onChange={(e) => setFilterMode(e.target.value)}>
           <option value="">All</option>
@@ -339,7 +379,7 @@ export default function BannerConfigsPage() {
           <option value="news">news</option>
           <option value="empty">empty</option>
         </select>
-        <button onClick={fetchAll} style={{ marginLeft:8 }}>Reload</button>
+        <button onClick={fetchAll} style={{ marginLeft: 8 }}>Reload</button>
       </div>
 
       {loading ? (
@@ -347,9 +387,15 @@ export default function BannerConfigsPage() {
       ) : filtered.length === 0 ? (
         <p>No configs yet.</p>
       ) : (
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(360px, 1fr))', gap:12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 12 }}>
           {filtered.map((x) => (
-            <Card key={x._id} doc={x} onEdit={() => loadForEdit(x)} onDelete={() => deleteOne(x._id)} onToggle={(next)=>toggleActive(x._id, next)} />
+            <Card
+              key={x._id}
+              doc={x}
+              onEdit={() => loadForEdit(x)}
+              onDelete={() => deleteOne(x._id)}
+              onToggle={(next) => toggleActive(x._id, next)}
+            />
           ))}
         </div>
       )}
@@ -361,39 +407,81 @@ function Card({ doc, onEdit, onDelete, onToggle }) {
   const anchor = doc.anchor || {};
   const p = doc.payload || {};
   return (
-    <div style={{ background:'#111', border:'1px solid #222', borderRadius:12, padding:12 }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+    <div
+      className="card"
+      style={{
+        background: 'var(--card)',
+        color: 'var(--fg)',
+        border: '1px solid var(--border)',
+        borderRadius: 12,
+        padding: 12,
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <strong>{doc.mode?.toUpperCase() || '—'}</strong>
-        <span style={{ fontSize:12, opacity:.8 }}>prio: {doc.priority ?? 100}</span>
+        <span style={{ fontSize: 12, opacity: 0.8 }}>prio: {doc.priority ?? 100}</span>
       </div>
 
-      <div style={{ marginTop:6, fontSize:13, lineHeight:1.5 }}>
-        <div><span style={{ opacity:.7 }}>Active:</span> {doc.isActive ? '✅ yes' : '❌ no'}</div>
-        <div><span style={{ opacity:.7 }}>Anchor:</span> {anchor.kind || 'slot'}
-          {anchor.kind === 'slot' && <> | nth: {anchor.nth ?? doc.startAfter ?? 10} | every: {doc.repeatEvery || '—'}</>}
-          {anchor.kind === 'article' && <> | articleKey: <code>{anchor.articleKey}</code></>}
-          {anchor.kind === 'category' && <> | category: <code>{anchor.category}</code></>}
+      <div style={{ marginTop: 6, fontSize: 13, lineHeight: 1.5 }}>
+        <div>
+          <span style={{ opacity: 0.7 }}>Active:</span> {doc.isActive ? '✅ yes' : '❌ no'}
         </div>
-        {doc.message ? (<div><span style={{ opacity:.7 }}>Message:</span> {doc.message}</div>) : null}
+        <div>
+          <span style={{ opacity: 0.7 }}>Anchor:</span> {anchor.kind || 'slot'}
+          {anchor.kind === 'slot' && (
+            <>
+              {' '}| nth: {anchor.nth ?? doc.startAfter ?? 10} | every: {doc.repeatEvery || '—'}
+            </>
+          )}
+          {anchor.kind === 'article' && (
+            <>
+              {' '}| articleKey: <code>{anchor.articleKey}</code>
+            </>
+          )}
+          {anchor.kind === 'category' && (
+            <>
+              {' '}| category: <code>{anchor.category}</code>
+            </>
+          )}
+        </div>
+        {doc.message ? (
+          <div>
+            <span style={{ opacity: 0.7 }}>Message:</span> {doc.message}
+          </div>
+        ) : null}
 
         {/* payload preview */}
-        <div style={{ marginTop:6, opacity:.85 }}>
-          <div><span style={{ opacity:.7 }}>Headline:</span> {p.headline || '—'}</div>
+        <div style={{ marginTop: 6, opacity: 0.85 }}>
+          <div>
+            <span style={{ opacity: 0.7 }}>Headline:</span> {p.headline || '—'}
+          </div>
           {doc.mode === 'news' && (
-            <div><span style={{ opacity:.7 }}>customNewsId:</span> {p.customNewsId || doc.customNewsId || '—'}</div>
+            <div>
+              <span style={{ opacity: 0.7 }}>customNewsId:</span> {p.customNewsId || doc.customNewsId || '—'}
+            </div>
           )}
           {doc.mode === 'ad' && (
-            <div><span style={{ opacity:.7 }}>imageUrl:</span> {p.imageUrl || doc.imageUrl || '—'}</div>
+            <div>
+              <span style={{ opacity: 0.7 }}>imageUrl:</span> {p.imageUrl || doc.imageUrl || '—'}
+            </div>
           )}
-          <div><span style={{ opacity:.7 }}>clickUrl:</span> {p.clickUrl || '—'}</div>
-          <div><span style={{ opacity:.7 }}>deeplinkUrl:</span> {p.deeplinkUrl || '—'}</div>
+          <div>
+            <span style={{ opacity: 0.7 }}>clickUrl:</span> {p.clickUrl || '—'}
+          </div>
+          <div>
+            <span style={{ opacity: 0.7 }}>deeplinkUrl:</span> {p.deeplinkUrl || '—'}
+          </div>
         </div>
       </div>
 
-      <div style={{ display:'flex', gap:8, marginTop:10 }}>
+      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
         <button onClick={onEdit}>Edit</button>
-        <button onClick={() => onToggle(!doc.isActive)}>{doc.isActive ? 'Disable' : 'Enable'}</button>
-        <button onClick={onDelete} style={{ background:'#7f1d1d', color:'#fff' }}>Delete</button>
+        <button onClick={() => onToggle(!doc.isActive)}>
+          {doc.isActive ? 'Disable' : 'Enable'}
+        </button>
+        <button onClick={onDelete} style={{ background: '#7f1d1d', color: '#fff' }}>
+          Delete
+        </button>
       </div>
     </div>
   );
