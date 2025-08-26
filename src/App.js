@@ -21,6 +21,9 @@ import NewsHubManager from './pages/NewsHubManager';
 // ✅ NEW: X Feeds admin (single-page manager)
 import XFeedsManager from './pages/XFeedsManager';
 
+// ✅ NEW: Banner Configs (article-anchored injections)
+import BannerConfigsPage from './pages/BannerConfigsPage';
+
 import './App.css';
 
 // ✅ Centralized API base (env first, then Render fallback) with trailing-slash normalization
@@ -149,7 +152,7 @@ function AdManager() {
           const imgSrc = ad.imageUrl?.startsWith('http')
             ? ad.imageUrl
             : `${API_BASE}${ad.imageUrl || ''}`;
-        return (
+          return (
             <div key={id} className="ad">
               <img src={imgSrc} alt={ad.title || 'Ad image'} />
               <h3>{ad.title || '—'}</h3>
@@ -186,6 +189,7 @@ function App() {
           <Link to="/banners" style={{ marginRight: '1rem' }}>📰 Banners w/ Article</Link>
           <Link to="/custom-news" style={{ marginRight: '1rem' }}>🧪 Custom News</Link>
           <Link to="/banner-manager" style={{ marginRight: '1rem' }}>🧲 Banner Manager</Link>
+          <Link to="/banner-configs" style={{ marginRight: '1rem' }}>🧲 Banner Configs</Link> {/* ✅ NEW */}
           <Link to="/live-update-hub" style={{ marginRight: '1rem' }}>⚡ Live Update Hub</Link>
         </nav>
 
@@ -204,6 +208,7 @@ function App() {
           <Route path="/banners" element={<BannerWithArticleManager />} />
           <Route path="/live-update-hub" element={<LiveUpdateHubManager />} />
           <Route path="/banner-manager" element={<BannerManagerPage />} />
+          <Route path="/banner-configs" element={<BannerConfigsPage />} /> {/* ✅ NEW */}
           <Route path="*" element={<AdManager />} />
         </Routes>
       </div>
