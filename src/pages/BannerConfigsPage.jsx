@@ -20,6 +20,7 @@ const emptyForm = {
   clickUrl: '',
   deeplinkUrl: '',
   customNewsId: '',
+  topic: '',          // 🆕 Custom News topic / category (lowercase)
 
   // meta
   priority: 100,
@@ -95,6 +96,7 @@ export default function BannerConfigsPage() {
       clickUrl: doc.payload?.clickUrl || '',
       deeplinkUrl: doc.payload?.deeplinkUrl || '',
       customNewsId: doc.payload?.customNewsId || doc.customNewsId || '',
+      topic: (doc.payload?.topic || '').toLowerCase(), // 🆕
 
       priority: doc.priority ?? 100,
       isActive: !!doc.isActive,
@@ -107,10 +109,24 @@ export default function BannerConfigsPage() {
 
   function onChange(e) {
     const { name, value, type, checked } = e.target;
-    setForm((f) => ({
-      ...f,
-      [name]: type === 'checkbox' ? checked : (name === 'category' ? value.toLowerCase() : value),
-    }));
+
+    setForm((f) => {
+      // lower-case for category/topic
+      if (name === 'category') return { ...f, category: value.toLowerCase() };
+      if (name === 'topic')    return { ...f, topic: value.toLowerCase() };
+
+      // when changing custom news, auto-fill topic if the item has one and the field is empty
+      if (name === 'customNewsId') {
+        const sel = customNews.find((n) => n._id === value);
+        const autoTopic = (!f.topic && sel?.topic) ? String(sel.topic).toLowerCase() : f.topic;
+        return { ...f, customNewsId: value, topic: autoTopic };
+      }
+
+      return {
+        ...f,
+        [name]: type === 'checkbox' ? checked : value,
+      };
+    });
   }
 
   function buildRequestBody() {
@@ -127,6 +143,7 @@ export default function BannerConfigsPage() {
       clickUrl: form.clickUrl || undefined,
       deeplinkUrl: form.deeplinkUrl || undefined,
       customNewsId: form.mode === 'news' ? (form.customNewsId || undefined) : undefined,
+      topic: form.topic || undefined, // 🆕 pass topic/category through to payload
     };
 
     const body = {
@@ -350,6 +367,18 @@ export default function BannerConfigsPage() {
               ))}
             </select>
           </div>
+
+          {/* 🆕 Topic / Category for Custom News */}
+          <div>
+            <label>Custom News Topic (optional)</label>
+            <input
+              name="topic"
+              value={form.topic}
+              onChange={onChange}
+              placeholder="e.g. cricket, finance"
+            />
+            <small style={{ opacity: 0.7 }}>Used to filter the in-app Custom News page.</small>
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
@@ -456,9 +485,14 @@ function Card({ doc, onEdit, onDelete, onToggle }) {
             <span style={{ opacity: 0.7 }}>Headline:</span> {p.headline || '—'}
           </div>
           {doc.mode === 'news' && (
-            <div>
-              <span style={{ opacity: 0.7 }}>customNewsId:</span> {p.customNewsId || doc.customNewsId || '—'}
-            </div>
+            <>
+              <div>
+                <span style={{ opacity: 0.7 }}>customNewsId:</span> {p.customNewsId || doc.customNewsId || '—'}
+              </div>
+              <div>
+                <span style={{ opacity: 0.7 }}>topic:</span> {p.topic || '—'}
+              </div>
+            </>
           )}
           {doc.mode === 'ad' && (
             <div>
