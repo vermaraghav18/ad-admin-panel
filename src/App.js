@@ -24,6 +24,9 @@ import XFeedsManager from './pages/XFeedsManager';
 // ✅ NEW: Banner Configs (article-anchored injections)
 import BannerConfigsPage from './pages/BannerConfigsPage';
 
+// ✅ NEW: Feature Banner Groups (grouped, category-scoped feature banners)
+import FeatureBannerGroupsManager from './pages/FeatureBannerGroupsManager';
+
 import './App.css';
 
 // ✅ Centralized API base (env first, then Render fallback) with trailing-slash normalization
@@ -189,7 +192,8 @@ function App() {
           <Link to="/banners" style={{ marginRight: '1rem' }}>📰 Banners w/ Article</Link>
           <Link to="/custom-news" style={{ marginRight: '1rem' }}>🧪 Custom News</Link>
           <Link to="/banner-manager" style={{ marginRight: '1rem' }}>🧲 Banner Manager</Link>
-          <Link to="/banner-configs" style={{ marginRight: '1rem' }}>🧲 Banner Configs</Link> {/* ✅ NEW */}
+          <Link to="/banner-configs" style={{ marginRight: '1rem' }}>🧲 Banner Configs</Link> {/* ✅ Existing */}
+          <Link to="/feature-banner-groups" style={{ marginRight: '1rem' }}>🎯 Feature Groups</Link> {/* ✅ NEW */}
           <Link to="/live-update-hub" style={{ marginRight: '1rem' }}>⚡ Live Update Hub</Link>
         </nav>
 
@@ -208,7 +212,8 @@ function App() {
           <Route path="/banners" element={<BannerWithArticleManager />} />
           <Route path="/live-update-hub" element={<LiveUpdateHubManager />} />
           <Route path="/banner-manager" element={<BannerManagerPage />} />
-          <Route path="/banner-configs" element={<BannerConfigsPage />} /> {/* ✅ NEW */}
+          <Route path="/banner-configs" element={<BannerConfigsPage />} />
+          <Route path="/feature-banner-groups" element={<FeatureBannerGroupsManager />} /> {/* ✅ NEW */}
           <Route path="*" element={<AdManager />} />
         </Routes>
       </div>
