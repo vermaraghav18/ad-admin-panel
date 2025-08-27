@@ -1,3 +1,4 @@
+// src/pages/FeatureBannerGroupsManager.js
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 
@@ -8,8 +9,11 @@ const emptyItem = () => ({
   imageUrl: '',
   link: '',
   pubDate: '',
-  description: '', // NEW
+  description: '',
 });
+
+// helper: get the document id regardless of _id/id transform
+const getId = (g) => g?._id ?? g?.id ?? '';
 
 export default function FeatureBannerGroupsManager() {
   const [groups, setGroups] = useState([]);
@@ -22,7 +26,7 @@ export default function FeatureBannerGroupsManager() {
   const [enabled, setEnabled] = useState(true);
   const [startAt, setStartAt] = useState('');
   const [endAt, setEndAt] = useState('');
-  const [articleKey, setArticleKey] = useState(''); // NEW
+  const [articleKey, setArticleKey] = useState('');
   const [items, setItems] = useState([]);
 
   const [editingId, setEditingId] = useState(null);
@@ -31,7 +35,9 @@ export default function FeatureBannerGroupsManager() {
 
   async function fetchGroups() {
     const res = await axios.get(`${API_BASE}/api/feature-banner-groups`);
-    setGroups(res.data || []);
+    // normalize so we always have _id
+    const data = (res.data || []).map(g => ({ _id: getId(g), ...g }));
+    setGroups(data);
   }
 
   function resetForm() {
@@ -43,28 +49,32 @@ export default function FeatureBannerGroupsManager() {
     setEnabled(true);
     setStartAt('');
     setEndAt('');
-    setArticleKey(''); // NEW
+    setArticleKey('');
     setItems([]);
   }
 
   function addItem() { setItems(prev => [...prev, emptyItem()]); }
   function removeItem(idx) { setItems(prev => prev.filter((_, i) => i !== idx)); }
-
   function updateItem(idx, key, val) {
-    setItems(prev => prev.map((it, i) => i === idx ? { ...it, [key]: val } : it));
+    setItems(prev => prev.map((it, i) => (i === idx ? { ...it, [key]: val } : it)));
   }
 
   async function createOrUpdate() {
     const payload = {
-      name, category, nth: Number(nth) || 0, priority: Number(priority) || 0, enabled,
-      startAt: startAt || null, endAt: endAt || null,
-      articleKey: (articleKey || '').trim(), // NEW
+      name,
+      category,
+      nth: Number(nth) || 0,
+      priority: Number(priority) || 0,
+      enabled,
+      startAt: startAt || null,
+      endAt: endAt || null,
+      articleKey: (articleKey || '').trim(),
       items: items.map(i => ({
         title: i.title,
         imageUrl: i.imageUrl,
         link: i.link,
         pubDate: i.pubDate || null,
-        description: i.description || '', // NEW
+        description: i.description || '',
       })),
     };
 
@@ -78,27 +88,34 @@ export default function FeatureBannerGroupsManager() {
   }
 
   function startEdit(g) {
-    setEditingId(g._id);
+    const id = getId(g);
+    setEditingId(id || null);
     setName(g.name || '');
     setCategory(g.category || '');
     setNth(g.nth ?? 0);
     setPriority(g.priority ?? 0);
     setEnabled(!!g.enabled);
-    setStartAt(g.startAt ? g.startAt.slice(0, 16) : '');
-    setEndAt(g.endAt ? g.endAt.slice(0, 16) : '');
-    setArticleKey(g.articleKey || ''); // NEW
+    setStartAt(g.startAt ? String(g.startAt).slice(0, 16) : '');
+    setEndAt(g.endAt ? String(g.endAt).slice(0, 16) : '');
+    setArticleKey(g.articleKey || '');
     setItems((g.items || []).map(it => ({
       title: it.title || '',
       imageUrl: it.imageUrl || '',
       link: it.link || '',
-      pubDate: it.pubDate ? ('' + it.pubDate).slice(0, 16) : '',
-      description: it.description || '', // NEW
+      pubDate: it.pubDate ? String(it.pubDate).slice(0, 16) : '',
+      description: it.description || '',
     })));
   }
 
-  async function removeGroup(id) {
+  async function removeGroup(idLike) {
+    const id = idLike || editingId;
+    if (!id) {
+      alert('Missing id for deletion.');
+      return;
+    }
     if (!window.confirm('Delete this group?')) return;
     await axios.delete(`${API_BASE}/api/feature-banner-groups/${id}`);
+    if (editingId === id) resetForm();
     fetchGroups();
   }
 
@@ -122,7 +139,6 @@ export default function FeatureBannerGroupsManager() {
           <input type="datetime-local" value={endAt} onChange={e => setEndAt(e.target.value)} />
         </div>
 
-        {/* NEW: Article Key */}
         <div className="row">
           <input
             placeholder="Article key (optional: inject after this article ID)"
@@ -138,7 +154,6 @@ export default function FeatureBannerGroupsManager() {
             <input placeholder="Image URL (.jpg/.png/.webp)" value={it.imageUrl} onChange={e => updateItem(idx, 'imageUrl', e.target.value)} />
             <input placeholder="Link (optional)" value={it.link} onChange={e => updateItem(idx, 'link', e.target.value)} />
             <input type="datetime-local" value={it.pubDate} onChange={e => updateItem(idx, 'pubDate', e.target.value)} />
-            {/* NEW: description */}
             <input placeholder="Description (shown under title)" value={it.description} onChange={e => updateItem(idx, 'description', e.target.value)} />
             <button onClick={() => removeItem(idx)}>Remove</button>
           </div>
@@ -158,20 +173,23 @@ export default function FeatureBannerGroupsManager() {
           </tr>
         </thead>
         <tbody>
-          {groups.map(g => (
-            <tr key={g._id}>
-              <td>{g.name}</td>
-              <td>{g.category}</td>
-              <td>{g.nth}</td>
-              <td style={{maxWidth:260, overflow:'hidden', textOverflow:'ellipsis'}}>{g.articleKey || '—'}</td>
-              <td>{g.items?.length ?? 0}</td>
-              <td>{g.enabled ? 'Yes' : 'No'}</td>
-              <td>
-                <button onClick={() => startEdit(g)}>Edit</button>
-                <button onClick={() => removeGroup(g._id)} style={{ marginLeft: 8 }}>Delete</button>
-              </td>
-            </tr>
-          ))}
+          {groups.map(g => {
+            const id = getId(g);
+            return (
+              <tr key={id}>
+                <td>{g.name}</td>
+                <td>{g.category}</td>
+                <td>{g.nth}</td>
+                <td style={{maxWidth:260, overflow:'hidden', textOverflow:'ellipsis'}}>{g.articleKey || '—'}</td>
+                <td>{g.items?.length ?? 0}</td>
+                <td>{g.enabled ? 'Yes' : 'No'}</td>
+                <td>
+                  <button onClick={() => startEdit(g)}>Edit</button>
+                  <button onClick={() => removeGroup(id)} style={{ marginLeft: 8 }}>Delete</button>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
