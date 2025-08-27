@@ -1,89 +1,174 @@
-// src/pages/FeatureBannerGroupsManager.js
 import React, { useEffect, useState } from 'react';
-import { listGroups, createGroup, updateGroup, deleteGroup } from '../services/featureBannerGroupsApi';
+import axios from 'axios';
 
-const empty = {
-  name: '',
-  category: '',
-  nth: 3,
-  priority: 0,
-  enabled: true,
-  startAt: '',
-  endAt: '',
-  items: [
-    // { id:'', title:'', description:'', imageUrl:'', link:'', source:'', publishedAt:'' }
-  ],
-};
+const API_BASE = (process.env.REACT_APP_API_BASE || 'https://ad-server-qx62.onrender.com').replace(/\/$/, '');
+
+const emptyItem = () => ({
+  title: '',
+  imageUrl: '',
+  link: '',
+  pubDate: '',
+  description: '', // NEW
+});
 
 export default function FeatureBannerGroupsManager() {
   const [groups, setGroups] = useState([]);
-  const [form, setForm] = useState(empty);
-  const [editing, setEditing] = useState(null);
 
-  const load = async () => setGroups(await listGroups());
-  useEffect(() => { load(); }, []);
+  // create/edit state
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState('');
+  const [nth, setNth] = useState(3);
+  const [priority, setPriority] = useState(0);
+  const [enabled, setEnabled] = useState(true);
+  const [startAt, setStartAt] = useState('');
+  const [endAt, setEndAt] = useState('');
+  const [articleKey, setArticleKey] = useState(''); // NEW
+  const [items, setItems] = useState([]);
 
-  const save = async (e) => {
-    e.preventDefault();
-    const payload = { ...form, nth: Number(form.nth), priority: Number(form.priority) || 0 };
-    if (editing) await updateGroup(editing, payload); else await createGroup(payload);
-    setForm(empty); setEditing(null); load();
-  };
+  const [editingId, setEditingId] = useState(null);
 
-  const onEdit = (g) => { setEditing(g._id); setForm({ ...g, startAt: g.startAt?.slice(0,16) || '', endAt: g.endAt?.slice(0,16) || '' }); };
-  const onDelete = async (id) => { if (window.confirm('Delete?')) { await deleteGroup(id); load(); } };
+  useEffect(() => { fetchGroups(); }, []);
 
-  const updateItem = (idx, key, val) => {
-    const items = [...form.items];
-    items[idx] = { ...items[idx], [key]: val };
-    setForm({ ...form, items });
-  };
+  async function fetchGroups() {
+    const res = await axios.get(`${API_BASE}/api/feature-banner-groups`);
+    setGroups(res.data || []);
+  }
+
+  function resetForm() {
+    setEditingId(null);
+    setName('');
+    setCategory('');
+    setNth(3);
+    setPriority(0);
+    setEnabled(true);
+    setStartAt('');
+    setEndAt('');
+    setArticleKey(''); // NEW
+    setItems([]);
+  }
+
+  function addItem() { setItems(prev => [...prev, emptyItem()]); }
+  function removeItem(idx) { setItems(prev => prev.filter((_, i) => i !== idx)); }
+
+  function updateItem(idx, key, val) {
+    setItems(prev => prev.map((it, i) => i === idx ? { ...it, [key]: val } : it));
+  }
+
+  async function createOrUpdate() {
+    const payload = {
+      name, category, nth: Number(nth) || 0, priority: Number(priority) || 0, enabled,
+      startAt: startAt || null, endAt: endAt || null,
+      articleKey: (articleKey || '').trim(), // NEW
+      items: items.map(i => ({
+        title: i.title,
+        imageUrl: i.imageUrl,
+        link: i.link,
+        pubDate: i.pubDate || null,
+        description: i.description || '', // NEW
+      })),
+    };
+
+    if (editingId) {
+      await axios.put(`${API_BASE}/api/feature-banner-groups/${editingId}`, payload);
+    } else {
+      await axios.post(`${API_BASE}/api/feature-banner-groups`, payload);
+    }
+    resetForm();
+    fetchGroups();
+  }
+
+  function startEdit(g) {
+    setEditingId(g._id);
+    setName(g.name || '');
+    setCategory(g.category || '');
+    setNth(g.nth ?? 0);
+    setPriority(g.priority ?? 0);
+    setEnabled(!!g.enabled);
+    setStartAt(g.startAt ? g.startAt.slice(0, 16) : '');
+    setEndAt(g.endAt ? g.endAt.slice(0, 16) : '');
+    setArticleKey(g.articleKey || ''); // NEW
+    setItems((g.items || []).map(it => ({
+      title: it.title || '',
+      imageUrl: it.imageUrl || '',
+      link: it.link || '',
+      pubDate: it.pubDate ? ('' + it.pubDate).slice(0, 16) : '',
+      description: it.description || '', // NEW
+    })));
+  }
+
+  async function removeGroup(id) {
+    if (!window.confirm('Delete this group?')) return;
+    await axios.delete(`${API_BASE}/api/feature-banner-groups/${id}`);
+    fetchGroups();
+  }
+
+  const actionLabel = editingId ? 'Update' : 'Create';
 
   return (
-    <div style={{ padding: 16, maxWidth: 1000, margin: '0 auto' }}>
+    <div className="page">
       <h2>Feature Banner Groups</h2>
 
-      <form onSubmit={save} style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        <input placeholder="Name" value={form.name} onChange={e=>setForm({...form, name:e.target.value})}/>
-        <input placeholder="Category (e.g. Sports)" value={form.category} onChange={e=>setForm({...form, category:e.target.value})}/>
-        <input type="number" placeholder="nth" value={form.nth} onChange={e=>setForm({...form, nth:e.target.value})}/>
-        <input type="number" placeholder="priority" value={form.priority} onChange={e=>setForm({...form, priority:e.target.value})}/>
-        <label><input type="checkbox" checked={form.enabled} onChange={e=>setForm({...form, enabled:e.target.checked})}/> Enabled</label>
-        <input type="datetime-local" value={form.startAt} onChange={e=>setForm({...form, startAt:e.target.value})}/>
-        <input type="datetime-local" value={form.endAt} onChange={e=>setForm({...form, endAt:e.target.value})}/>
-        <button type="submit" style={{ gridColumn: 'span 1' }}>{editing ? 'Update' : 'Create'}</button>
-      </form>
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div className="row">
+          <input placeholder="Name" value={name} onChange={e => setName(e.target.value)} />
+          <input placeholder="Category (e.g. Sports)" value={category} onChange={e => setCategory(e.target.value)} />
+          <input placeholder="Nth" type="number" value={nth} onChange={e => setNth(e.target.value)} />
+          <input placeholder="Priority" type="number" value={priority} onChange={e => setPriority(e.target.value)} />
+        </div>
 
-      <div style={{ marginTop: 16 }}>
-        <h3>Items in this group</h3>
-        {form.items.map((it, i) => (
-          <div key={i} style={{ display:'grid', gridTemplateColumns:'1fr 1fr 2fr 2fr 1fr 1fr', gap:8, margin:'8px 0' }}>
-            <input placeholder="title" value={it.title||''} onChange={e=>updateItem(i,'title',e.target.value)}/>
-            <input placeholder="source" value={it.source||''} onChange={e=>updateItem(i,'source',e.target.value)}/>
-            <input placeholder="imageUrl" value={it.imageUrl||''} onChange={e=>updateItem(i,'imageUrl',e.target.value)}/>
-            <input placeholder="link" value={it.link||''} onChange={e=>updateItem(i,'link',e.target.value)}/>
-            <input placeholder="pub date (ISO)" value={it.publishedAt||''} onChange={e=>updateItem(i,'publishedAt',e.target.value)}/>
-            <button type="button" onClick={()=>setForm({...form, items: form.items.filter((_,x)=>x!==i)})}>Remove</button>
+        <div className="row">
+          <label><input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} /> Enabled</label>
+          <input type="datetime-local" value={startAt} onChange={e => setStartAt(e.target.value)} />
+          <input type="datetime-local" value={endAt} onChange={e => setEndAt(e.target.value)} />
+        </div>
+
+        {/* NEW: Article Key */}
+        <div className="row">
+          <input
+            placeholder="Article key (optional: inject after this article ID)"
+            value={articleKey}
+            onChange={e => setArticleKey(e.target.value)}
+          />
+        </div>
+
+        <h4>Items in this group</h4>
+        {items.map((it, idx) => (
+          <div className="row" key={idx}>
+            <input placeholder="Title" value={it.title} onChange={e => updateItem(idx, 'title', e.target.value)} />
+            <input placeholder="Image URL (.jpg/.png/.webp)" value={it.imageUrl} onChange={e => updateItem(idx, 'imageUrl', e.target.value)} />
+            <input placeholder="Link (optional)" value={it.link} onChange={e => updateItem(idx, 'link', e.target.value)} />
+            <input type="datetime-local" value={it.pubDate} onChange={e => updateItem(idx, 'pubDate', e.target.value)} />
+            {/* NEW: description */}
+            <input placeholder="Description (shown under title)" value={it.description} onChange={e => updateItem(idx, 'description', e.target.value)} />
+            <button onClick={() => removeItem(idx)}>Remove</button>
           </div>
         ))}
-        <button type="button" onClick={()=>setForm({...form, items:[...form.items, {}]})}>+ Add Item</button>
+        <div className="row">
+          <button onClick={addItem}>+ Add Item</button>
+          <div style={{ flex: 1 }} />
+          <button onClick={createOrUpdate}>{actionLabel}</button>
+          {editingId && <button onClick={resetForm} style={{ marginLeft: 8 }}>Cancel</button>}
+        </div>
       </div>
 
-      <hr style={{ margin:'24px 0' }}/>
-
-      <table width="100%" cellPadding="8" style={{ borderCollapse:'collapse' }}>
-        <thead><tr><th>Name</th><th>Category</th><th>nth</th><th>Items</th><th>Enabled</th><th>Actions</th></tr></thead>
+      <table className="table">
+        <thead>
+          <tr>
+            <th>Name</th><th>Category</th><th>nth</th><th>Article Key</th><th>Items</th><th>Enabled</th><th>Actions</th>
+          </tr>
+        </thead>
         <tbody>
-          {groups.map(g=>(
+          {groups.map(g => (
             <tr key={g._id}>
               <td>{g.name}</td>
               <td>{g.category}</td>
               <td>{g.nth}</td>
-              <td>{g.items?.length||0}</td>
-              <td>{g.enabled ? 'Yes':'No'}</td>
+              <td style={{maxWidth:260, overflow:'hidden', textOverflow:'ellipsis'}}>{g.articleKey || '—'}</td>
+              <td>{g.items?.length ?? 0}</td>
+              <td>{g.enabled ? 'Yes' : 'No'}</td>
               <td>
-                <button onClick={()=>onEdit(g)}>Edit</button>{' '}
-                <button onClick={()=>onDelete(g._id)}>Delete</button>
+                <button onClick={() => startEdit(g)}>Edit</button>
+                <button onClick={() => removeGroup(g._id)} style={{ marginLeft: 8 }}>Delete</button>
               </td>
             </tr>
           ))}
