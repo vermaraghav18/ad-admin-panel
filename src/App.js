@@ -1,3 +1,4 @@
+// app.js
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import axios from 'axios';
@@ -26,6 +27,10 @@ import BannerConfigsPage from './pages/BannerConfigsPage';
 
 // ✅ NEW: Feature Banner Groups (grouped, category-scoped feature banners)
 import FeatureBannerGroupsManager from './pages/FeatureBannerGroupsManager';
+
+// ✅ NEW: Cartoons (Sections + Items)
+import CartoonSectionsList from './pages/CartoonSectionsList';
+import CartoonSectionEdit from './pages/CartoonSectionEdit';
 
 import './App.css';
 
@@ -195,6 +200,10 @@ function App() {
           <Link to="/banner-configs" style={{ marginRight: '1rem' }}>🧲 Banner Configs</Link> {/* ✅ Existing */}
           <Link to="/feature-banner-groups" style={{ marginRight: '1rem' }}>🎯 Feature Groups</Link> {/* ✅ NEW */}
           <Link to="/live-update-hub" style={{ marginRight: '1rem' }}>⚡ Live Update Hub</Link>
+
+          {/* ✅ NEW: Cartoon admin */}
+          <Link to="/cartoons" style={{ marginLeft: '1rem', fontWeight: 600 }}>🎭 Cartoons</Link>
+          <Link to="/cartoons/new" style={{ marginLeft: '0.75rem' }}>＋ New Cartoon Section</Link>
         </nav>
 
         <Routes>
@@ -213,7 +222,13 @@ function App() {
           <Route path="/live-update-hub" element={<LiveUpdateHubManager />} />
           <Route path="/banner-manager" element={<BannerManagerPage />} />
           <Route path="/banner-configs" element={<BannerConfigsPage />} />
-          <Route path="/feature-banner-groups" element={<FeatureBannerGroupsManager />} /> {/* ✅ NEW */}
+          <Route path="/feature-banner-groups" element={<FeatureBannerGroupsManager />} />
+
+          {/* ✅ NEW: Cartoon admin routes */}
+          <Route path="/cartoons" element={<CartoonSectionsList />} />
+          <Route path="/cartoons/new" element={<CartoonSectionEdit />} />
+          <Route path="/cartoons/:id" element={<CartoonSectionEdit />} />
+
           <Route path="*" element={<AdManager />} />
         </Routes>
       </div>
