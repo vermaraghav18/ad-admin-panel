@@ -1,6 +1,6 @@
 // App.js
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, NavLink } from 'react-router-dom';
 import axios from 'axios';
 
 // Existing pages
@@ -32,7 +32,7 @@ import FeatureBannerGroupsManager from './pages/FeatureBannerGroupsManager';
 import CartoonSectionsList from './pages/CartoonSectionsList';
 import CartoonSectionEdit from './pages/CartoonSectionEdit';
 
-// imports at top
+// ✅ NEW: Sections (dynamic tabs)
 import SectionsList from './pages/SectionsList';
 import SectionEdit from './pages/SectionEdit';
 
@@ -328,7 +328,7 @@ function App() {
           <Link to="/live-update-hub" style={{ marginRight: '1rem' }}>⚡ Live Update Hub</Link>
           <Link to="/cartoons" style={{ marginLeft: '1rem', fontWeight: 600 }}>🎭 Cartoons</Link>
           <Link to="/cartoons/new" style={{ marginLeft: '0.75rem' }}>＋ New Cartoon Section</Link>
-          <NavLink to="/sections">Sections</NavLink>
+          <NavLink to="/sections" style={{ marginLeft: '1rem', fontWeight: 600 }}>🧭 Sections</NavLink>
         </nav>
 
         <Routes>
@@ -351,11 +351,14 @@ function App() {
           <Route path="/cartoons" element={<CartoonSectionsList />} />
           <Route path="/cartoons/new" element={<CartoonSectionEdit />} />
           <Route path="/cartoons/:id" element={<CartoonSectionEdit />} />
-          <Route path="*" element={<AdManager />} />
-          {/* in your <Routes> */}
+
+          {/* Sections (new) */}
           <Route path="/sections" element={<SectionsList />} />
-          <Route path="/sections/:id" element={<SectionEdit />} />
           <Route path="/sections/new" element={<SectionEdit />} />
+          <Route path="/sections/:id" element={<SectionEdit />} />
+
+          {/* Fallback */}
+          <Route path="*" element={<AdManager />} />
         </Routes>
       </div>
     </Router>
