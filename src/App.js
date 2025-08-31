@@ -32,6 +32,10 @@ import FeatureBannerGroupsManager from './pages/FeatureBannerGroupsManager';
 import CartoonSectionsList from './pages/CartoonSectionsList';
 import CartoonSectionEdit from './pages/CartoonSectionEdit';
 
+// imports at top
+import SectionsList from './pages/SectionsList';
+import SectionEdit from './pages/SectionEdit';
+
 import './App.css';
 
 // ✅ Centralized API base (env first, then Render fallback) with trailing-slash normalization
@@ -324,6 +328,7 @@ function App() {
           <Link to="/live-update-hub" style={{ marginRight: '1rem' }}>⚡ Live Update Hub</Link>
           <Link to="/cartoons" style={{ marginLeft: '1rem', fontWeight: 600 }}>🎭 Cartoons</Link>
           <Link to="/cartoons/new" style={{ marginLeft: '0.75rem' }}>＋ New Cartoon Section</Link>
+          <NavLink to="/sections">Sections</NavLink>
         </nav>
 
         <Routes>
@@ -347,6 +352,10 @@ function App() {
           <Route path="/cartoons/new" element={<CartoonSectionEdit />} />
           <Route path="/cartoons/:id" element={<CartoonSectionEdit />} />
           <Route path="*" element={<AdManager />} />
+          {/* in your <Routes> */}
+          <Route path="/sections" element={<SectionsList />} />
+          <Route path="/sections/:id" element={<SectionEdit />} />
+          <Route path="/sections/new" element={<SectionEdit />} />
         </Routes>
       </div>
     </Router>
