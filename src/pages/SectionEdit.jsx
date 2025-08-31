@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { createSection, updateSection } from '../api/sections';
+import { createSection, updateSection, listSections } from '../api/sections';
 import { useNavigate, useParams } from 'react-router-dom';
-import api from '../api';
 
 // lightweight loader for single section (we keep it inline)
 async function loadSection(id) {
-  const res = await api.get('/sections', { params: {} });
-  const item = (res.data.items || []).find(x => x._id === id);
-  return item || null;
+  const items = await listSections();
+  return items.find(x => x._id === id) || null;
 }
 
 export default function SectionEdit() {

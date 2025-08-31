@@ -1,14 +1,16 @@
 // src/api/sections.js
-import api from './index';
+import { request } from '../api';
 
-export const listSections = (params = {}) =>
-  api.get('/sections', { params }).then(r => r.data.items);
+export const listSections = (params = {}) => {
+  const qs = new URLSearchParams(params).toString();
+  return request(`/api/sections${qs ? `?${qs}` : ''}`).then(r => r.items || r); // supports {items:[...]} or [...]
+};
 
 export const createSection = (payload) =>
-  api.post('/sections', payload).then(r => r.data);
+  request('/api/sections', { method: 'POST', body: payload });
 
 export const updateSection = (id, payload) =>
-  api.patch(`/sections/${id}`, payload).then(r => r.data);
+  request(`/api/sections/${id}`, { method: 'PATCH', body: payload });
 
 export const deleteSection = (id) =>
-  api.delete(`/sections/${id}`).then(r => r.data);
+  request(`/api/sections/${id}`, { method: 'DELETE' });
