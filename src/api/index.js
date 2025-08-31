@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 const base =
-  (import.meta && import.meta.env && import.meta.env.VITE_API_BASE) ||
+  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE) ||
   process.env.REACT_APP_API_BASE ||
   'https://ad-server-qx62.onrender.com';
 
