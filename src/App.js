@@ -28,11 +28,9 @@ import BannerConfigsPage from './pages/BannerConfigsPage';
 // ✅ NEW: Feature Banner Groups (grouped, category-scoped feature banners)
 import FeatureBannerGroupsManager from './pages/FeatureBannerGroupsManager';
 
-// ✅ NEW: Cartoons (Sections + Items)
-import CartoonSectionsList from './pages/CartoonSectionsList';
-import CartoonSectionEdit from './pages/CartoonSectionEdit';
+// ✅ NEW: Cartoon Hub (this replaces the old CartoonSectionsList/CartoonSectionEdit)
+import CartoonHubManager from './pages/CartoonHubManager';
 
-// ✅ NEW: Sections (dynamic tabs)
 import SectionsList from './pages/SectionsList';
 import SectionEdit from './pages/SectionEdit';
 
@@ -62,10 +60,7 @@ function AdManager() {
     'Sports', 'Technology', 'Health', 'Education', 'Politics'
   ];
 
-  useEffect(() => {
-    fetchAds();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useEffect(() => { fetchAds(); }, []);
 
   const fetchAds = async () => {
     try {
@@ -85,20 +80,18 @@ function AdManager() {
       return alert('All required fields must be filled');
     }
 
-    // 📨 Build form data
     const formData = new FormData();
     formData.append('image', image);
     formData.append('link', link);
     formData.append('target', target);
     formData.append('type', type);
-    formData.append('placement', placement); // 🆕
+    formData.append('placement', placement);
 
     if (!isFullPage) {
       formData.append('title', title);
       formData.append('description', description);
     }
 
-    // 🆕 Scheduling (for fullpage ads; backend will sanitize anyway)
     formData.append('afterNth', String(isFullPage ? afterNth : 0));
     formData.append('repeatEvery', String(isFullPage ? repeatEvery : 0));
     formData.append('repeatCount', String(isFullPage ? repeatCount : 0));
@@ -106,7 +99,6 @@ function AdManager() {
     try {
       setLoading(true);
       await axios.post(`${API_BASE}/api/ads`, formData);
-      // Reset form
       setImage(null);
       setTitle('');
       setLink('');
@@ -181,7 +173,6 @@ function AdManager() {
           </select>
         </div>
 
-        {/* Normal Ad content (hidden for fullpage) */}
         {!isFullPage && (
           <>
             <div>
@@ -208,7 +199,6 @@ function AdManager() {
           </>
         )}
 
-        {/* 🆕 Scheduling — only for fullpage */}
         {isFullPage && (
           <div style={{ padding: 12, border: '1px solid #ddd', borderRadius: 8 }}>
             <div style={{ marginBottom: 8, fontWeight: 600 }}>Scheduling (Fullpage Ads)</div>
@@ -276,7 +266,6 @@ function AdManager() {
                     <div><strong>📍 Placement:</strong> {ad.placement || 'swipeOnly'}</div>
                   </div>
 
-                  {/* 🆕 Show scheduling values */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 8 }}>
                     <div><strong>After N:</strong> {ad.afterNth ?? 0}</div>
                     <div><strong>Repeat Every:</strong> {ad.repeatEvery ?? 0}</div>
@@ -287,10 +276,7 @@ function AdManager() {
                     <strong>Enabled:</strong> {String(ad.enabled ?? true)}
                   </div>
 
-                  <button
-                    style={{ marginTop: 12 }}
-                    onClick={() => handleDelete(id)}
-                  >
+                  <button style={{ marginTop: 12 }} onClick={() => handleDelete(id)}>
                     ❌ Delete
                   </button>
                 </div>
@@ -326,8 +312,10 @@ function App() {
           <Link to="/banner-configs" style={{ marginRight: '1rem' }}>🧲 Banner Configs</Link>
           <Link to="/feature-banner-groups" style={{ marginRight: '1rem' }}>🎯 Feature Groups</Link>
           <Link to="/live-update-hub" style={{ marginRight: '1rem' }}>⚡ Live Update Hub</Link>
-          <Link to="/cartoons" style={{ marginLeft: '1rem', fontWeight: 600 }}>🎭 Cartoons</Link>
-          <Link to="/cartoons/new" style={{ marginLeft: '0.75rem' }}>＋ New Cartoon Section</Link>
+
+          {/* ✅ New single entry point for Cartoons */}
+          <Link to="/cartoon-hub" style={{ marginLeft: '1rem', fontWeight: 600 }}>🎭 Cartoon Hub</Link>
+
           <NavLink to="/sections" style={{ marginLeft: '1rem', fontWeight: 600 }}>🧭 Sections</NavLink>
         </nav>
 
@@ -348,11 +336,11 @@ function App() {
           <Route path="/banner-manager" element={<BannerManagerPage />} />
           <Route path="/banner-configs" element={<BannerConfigsPage />} />
           <Route path="/feature-banner-groups" element={<FeatureBannerGroupsManager />} />
-          <Route path="/cartoons" element={<CartoonSectionsList />} />
-          <Route path="/cartoons/new" element={<CartoonSectionEdit />} />
-          <Route path="/cartoons/:id" element={<CartoonSectionEdit />} />
 
-          {/* Sections (new) */}
+          {/* ✅ Cartoon Hub route */}
+          <Route path="/cartoon-hub" element={<CartoonHubManager />} />
+
+          {/* Sections (existing) */}
           <Route path="/sections" element={<SectionsList />} />
           <Route path="/sections/new" element={<SectionEdit />} />
           <Route path="/sections/:id" element={<SectionEdit />} />
