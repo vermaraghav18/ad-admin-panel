@@ -1,60 +1,124 @@
+// src/components/BannerConfigForm.jsx
+// Drop-in: matches new backend (anchor + payload + targets). No file upload.
+// Props: { initial, onSaved, onCancel }
+
 import React, { useEffect, useMemo, useState } from 'react';
 
 const API_BASE = (process.env.REACT_APP_API_BASE || 'https://ad-server-qx62.onrender.com').replace(/\/$/, '');
-const modes = ['ad', 'news', 'empty'];
+const MODES = ['ad', 'news', 'empty'];
 
 export default function BannerConfigForm({ initial, onSaved, onCancel }) {
-  const [mode, setMode] = useState(initial?.mode ?? 'empty');
-  const [startAfter, setStartAfter] = useState(initial?.startAfter ?? 0);
+  // ------- core fields -------
+  const [mode, setMode] = useState(initial?.mode ?? 'ad');
+
+  // anchor
+  const [anchorKind, setAnchorKind]   = useState(initial?.anchor?.kind || (initial?.startAfter !== undefined ? 'slot' : 'slot'));
+  const [nth, setNth]                 = useState(initial?.anchor?.nth ?? initial?.startAfter ?? 10);
   const [repeatEvery, setRepeatEvery] = useState(
     initial?.repeatEvery === null || initial?.repeatEvery === undefined ? '' : String(initial?.repeatEvery)
   );
-  const [priority, setPriority] = useState(initial?.priority ?? 100);
-  const [isActive, setIsActive] = useState(initial?.isActive ?? true);
-  const [activeFrom, setActiveFrom] = useState(initial?.activeFrom ? isoLocal(initial.activeFrom) : '');
-  const [activeTo, setActiveTo] = useState(initial?.activeTo ? isoLocal(initial.activeTo) : '');
+  const [articleKey, setArticleKey]   = useState(initial?.anchor?.articleKey || '');
+  const [category, setCategory]       = useState(initial?.anchor?.category || '');
 
-  // content
-  const [imageFile, setImageFile] = useState(null);            // AD file
-  const [imageUrl, setImageUrl] = useState(initial?.imageUrl || ''); // optional URL fallback
-  const [customNewsId, setCustomNewsId] = useState(initial?.customNewsId || ''); // NEWS
-  const [message, setMessage] = useState(initial?.message || 'Tap to read more'); // EMPTY
+  // payload (modern fields)
+  const [headline, setHeadline]       = useState(initial?.payload?.headline || initial?.message || '');
+  const [imageUrl, setImageUrl]       = useState(initial?.payload?.imageUrl || initial?.imageUrl || '');
+  const [clickUrl, setClickUrl]       = useState(initial?.payload?.clickUrl || '');
+  const [deeplinkUrl, setDeeplinkUrl] = useState(initial?.payload?.deeplinkUrl || '');
+  const [customNewsId, setCustomNewsId] = useState(initial?.payload?.customNewsId || initial?.customNewsId || '');
+  const [topic, setTopic]             = useState((initial?.payload?.topic || '').toLowerCase());
+
+  // NEW: per-section targeting
+  const [targets, setTargets] = useState({
+    includeAll: initial?.targets?.includeAll !== undefined ? !!initial.targets.includeAll : true,
+    categories: initial?.targets?.categories || [],
+    cities:     initial?.targets?.cities || [],
+    states:     initial?.targets?.states || [],
+  });
+
+  // meta/flags
+  const [priority, setPriority]   = useState(initial?.priority ?? 100);
+  const [isActive, setIsActive]   = useState(initial?.isActive ?? true);
+  const [activeFrom, setActiveFrom] = useState(initial?.activeFrom ? isoLocal(initial.activeFrom) : '');
+  const [activeTo, setActiveTo]     = useState(initial?.activeTo ? isoLocal(initial.activeTo) : '');
+  const [message, setMessage]     = useState(initial?.message || 'Tap to read more');
 
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
 
+  // fetch options
   const [newsOptions, setNewsOptions] = useState([]);
-  const [loadingNews, setLoadingNews] = useState(false);
+  const [meta, setMeta] = useState({ categories: ['top', 'finance'], cities: [], states: [] });
 
   useEffect(() => {
-    if (mode !== 'news') return;
     let cancelled = false;
-    (async () => {
-      setLoadingNews(true);
-      try {
-        const res = await fetch(`${API_BASE}/api/custom-news`);
-        const ct = res.headers.get('content-type') || '';
-        const txt = await res.text();
-        const data = ct.includes('application/json') ? JSON.parse(txt) : { error: txt };
-        if (!res.ok) throw new Error(data.error || `Failed (${res.status})`);
-        if (!cancelled) setNewsOptions(Array.isArray(data) ? data : []);
-      } catch {
-        if (!cancelled) setNewsOptions([]);
-      } finally {
-        if (!cancelled) setLoadingNews(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [mode]);
 
-  const preview = useMemo(() => ({ mode, imageUrl, message, customNewsId }), [mode, imageUrl, message, customNewsId]);
+    (async () => {
+      try {
+        const r = await fetch(`${API_BASE}/api/banner-configs/meta`);
+        if (r.ok) {
+          const m = await r.json();
+          if (!cancelled) setMeta(m || {});
+        }
+      } catch {}
+    })();
+
+    (async () => {
+      try {
+        const r = await fetch(`${API_BASE}/api/custom-news`);
+        if (r.ok) {
+          const arr = await r.json();
+          if (!cancelled) setNewsOptions(Array.isArray(arr) ? arr : []);
+        }
+      } catch {}
+    })();
+
+    return () => { cancelled = true; };
+  }, []);
+
+  const disableTargetSelectors = !!targets.includeAll;
+
+  function updateTargets(path, value) {
+    setTargets((t) => {
+      const next = { ...t };
+      if (path === 'includeAll') next.includeAll = !!value;
+      if (path === 'categories') next.categories = value;
+      if (path === 'cities')     next.cities     = value;
+      if (path === 'states')     next.states     = value;
+      return next;
+    });
+  }
+
+  function onMultiChange(ev, which) {
+    const values = Array.from(ev.target.selectedOptions).map(o => o.value);
+    updateTargets(which, values);
+  }
+
+  // auto-topic when selecting a custom news (only if topic empty)
+  function onSelectNews(id) {
+    setCustomNewsId(id);
+    if (!topic) {
+      const sel = newsOptions.find(n => n._id === id);
+      if (sel?.topic) setTopic(String(sel.topic).toLowerCase());
+    }
+  }
+
+  const preview = useMemo(() => ({ mode, imageUrl, message }), [mode, imageUrl, message]);
 
   function validate() {
-    if (!modes.includes(mode)) return 'Invalid mode';
-    if (startAfter < 0) return 'startAfter must be ≥ 0';
-    if (repeatEvery !== '' && Number(repeatEvery) < 1) return 'repeatEvery must be ≥ 1 or blank';
-    if (mode === 'ad' && !imageFile && !imageUrl) return 'Please upload an image or provide imageUrl';
-    if (mode === 'news' && !customNewsId) return 'Please choose a Custom News item';
+    if (!MODES.includes(mode)) return 'Invalid mode';
+    if (anchorKind === 'slot' && (nth === null || Number(nth) < 1)) return 'Nth must be ≥ 1';
+    if (anchorKind === 'article' && !articleKey) return 'Article key is required for anchor kind "article"';
+    if (anchorKind === 'category' && !category) return 'Category is required for anchor kind "category"';
+
+    if (mode === 'ad' && !imageUrl) return 'imageUrl is required for AD mode';
+    if (mode === 'news') {
+      const hasNewsId = !!customNewsId;
+      const hasInline = !!(headline && (clickUrl || deeplinkUrl));
+      if (!hasNewsId && !hasInline) {
+        return 'For NEWS mode, provide customNewsId or (headline + click/deeplink URL).';
+      }
+    }
     return '';
   }
 
@@ -67,47 +131,50 @@ export default function BannerConfigForm({ initial, onSaved, onCancel }) {
     try {
       const isEdit = !!initial?._id;
       const url = isEdit ? `${API_BASE}/api/banner-configs/${initial._id}` : `${API_BASE}/api/banner-configs`;
-      let res;
 
-      if (mode === 'ad' && imageFile) {
-        // multipart for Cloudinary upload
-        const form = new FormData();
-        form.append('mode', mode);
-        form.append('startAfter', String(startAfter));
-        form.append('repeatEvery', repeatEvery === '' ? '' : String(repeatEvery));
-        form.append('priority', String(priority));
-        form.append('isActive', String(isActive));
-        if (activeFrom) form.append('activeFrom', activeFrom);
-        if (activeTo)   form.append('activeTo', activeTo);
-        form.append('image', imageFile);
+      const body = {
+        mode,
+        anchor: {
+          kind: anchorKind,
+          articleKey: anchorKind === 'article' ? (articleKey || undefined) : undefined,
+          category: anchorKind === 'category' ? (category || undefined).toLowerCase() : undefined,
+          nth: anchorKind === 'slot' ? Number(nth || 10) : undefined,
+        },
+        payload: {
+          headline: headline || undefined,
+          imageUrl: imageUrl || undefined,
+          clickUrl: clickUrl || undefined,
+          deeplinkUrl: deeplinkUrl || undefined,
+          customNewsId: mode === 'news' ? (customNewsId || undefined) : undefined,
+          topic: topic || undefined,
+        },
+        targets: {
+          includeAll: !!targets.includeAll,
+          categories: targets.includeAll ? [] : (targets.categories || []).map(c => String(c).toLowerCase()),
+          cities: targets.includeAll ? [] : (targets.cities || []),
+          states: targets.includeAll ? [] : (targets.states || []),
+        },
+        // legacy-compatible knobs
+        startAfter: anchorKind === 'slot' ? Number(nth || 10) : undefined,
+        repeatEvery:
+          anchorKind === 'slot' && repeatEvery !== ''
+            ? Number(repeatEvery)
+            : undefined,
+        priority: Number(priority || 100),
+        isActive: !!isActive,
+        activeFrom: activeFrom || undefined,
+        activeTo: activeTo || undefined,
+        message: message || undefined,
+      };
 
-        const method = isEdit ? 'PUT' : 'POST';
-        res = await fetch(url, { method, body: form });
-      } else {
-        // JSON
-        const body = {
-          mode,
-          startAfter: toInt(startAfter),
-          repeatEvery: repeatEvery === '' ? null : toInt(repeatEvery),
-          priority: toInt(priority),
-          isActive,
-          activeFrom: activeFrom || null,
-          activeTo: activeTo || null,
-          imageUrl: mode === 'ad' ? imageUrl : undefined,
-          customNewsId: mode === 'news' ? customNewsId : undefined,
-          message: mode === 'empty' ? message : undefined,
-        };
-        const method = isEdit ? 'PUT' : 'POST';
-        res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      }
-
-      const ct = res.headers.get('content-type') || '';
-      const txt = await res.text();
-      const data = ct.includes('application/json') ? JSON.parse(txt) : { error: txt };
+      const method = isEdit ? 'PUT' : 'POST';
+      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const text = await res.text();
+      const data = res.headers.get('content-type')?.includes('application/json') ? JSON.parse(text) : { error: text };
       if (!res.ok) throw new Error(data.error || `Save failed (${res.status})`);
       onSaved?.(data);
-    } catch (e) {
-      setErr(e.message || 'Failed to save');
+    } catch (e2) {
+      setErr(e2.message || 'Failed to save');
     } finally {
       setSaving(false);
     }
@@ -115,8 +182,9 @@ export default function BannerConfigForm({ initial, onSaved, onCancel }) {
 
   return (
     <form onSubmit={submit} className="space-y-4">
+      {/* Mode + Active */}
       <div className="flex gap-3 flex-wrap">
-        {modes.map(m => (
+        {MODES.map(m => (
           <label key={m} className="flex items-center gap-1">
             <input type="radio" name="mode" value={m} checked={mode === m} onChange={() => setMode(m)} />
             <span className="capitalize">{m}</span>
@@ -128,99 +196,183 @@ export default function BannerConfigForm({ initial, onSaved, onCancel }) {
         </label>
       </div>
 
-      {/* Placement */}
-      <div className="grid grid-cols-2 gap-3 max-w-lg">
+      {/* Anchor */}
+      <div className="grid gap-3 max-w-3xl" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))' }}>
         <label className="flex flex-col">
-          <span className="text-sm">startAfter (≥ 0)</span>
-          <input type="number" className="input" min={0} value={startAfter} onChange={e => setStartAfter(toInt(e.target.value) ?? 0)} />
+          <span className="text-sm">Anchor kind</span>
+          <select value={anchorKind} onChange={(e) => setAnchorKind(e.target.value)}>
+            <option value="slot">slot (Nth & every)</option>
+            <option value="article">article (after articleKey)</option>
+            <option value="category">category (top story of category)</option>
+          </select>
         </label>
-        <label className="flex flex-col">
-          <span className="text-sm">repeatEvery (blank = once)</span>
-          <input type="number" className="input" min={1} value={repeatEvery} onChange={e => setRepeatEvery(e.target.value)} placeholder="(blank = once)" />
-        </label>
-        <label className="flex flex-col">
-          <span className="text-sm">priority (lower wins)</span>
-          <input type="number" className="input" value={priority} onChange={e => setPriority(toInt(e.target.value) ?? 100)} />
-        </label>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col">
-            <span className="text-sm">activeFrom (optional)</span>
-            <input type="datetime-local" className="input" value={activeFrom} onChange={e => setActiveFrom(e.target.value)} />
+
+        {anchorKind === 'slot' && (
+          <>
+            <label className="flex flex-col">
+              <span className="text-sm">Nth (1 = after first)</span>
+              <input type="number" min={1} value={nth} onChange={(e) => setNth(toInt(e.target.value) ?? 10)} />
+            </label>
+            <label className="flex flex-col">
+              <span className="text-sm">Repeat every (blank = once)</span>
+              <input type="number" min={1} value={repeatEvery} onChange={(e) => setRepeatEvery(e.target.value)} placeholder="e.g. 5" />
+            </label>
+          </>
+        )}
+
+        {anchorKind === 'article' && (
+          <label className="flex flex-col" style={{ gridColumn: '1 / -1' }}>
+            <span className="text-sm">Article Key (must match `id` from /api/rss-agg)</span>
+            <input value={articleKey} onChange={(e) => setArticleKey(e.target.value)} placeholder="sha1 id or link-based id" />
           </label>
+        )}
+
+        {anchorKind === 'category' && (
           <label className="flex flex-col">
-            <span className="text-sm">activeTo (optional)</span>
-            <input type="datetime-local" className="input" value={activeTo} onChange={e => setActiveTo(e.target.value)} />
+            <span className="text-sm">Category (lowercase)</span>
+            <input value={category} onChange={(e) => setCategory(e.target.value.toLowerCase())} placeholder="e.g. finance, sports" />
           </label>
-        </div>
+        )}
       </div>
 
-      {/* Content by mode */}
-      {mode === 'ad' && (
-        <div className="max-w-xl space-y-2">
+      {/* Targeting */}
+      <div className="space-y-2">
+        <div className="font-medium">Show in (Sections)</div>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={!!targets.includeAll}
+            onChange={(e) => updateTargets('includeAll', e.target.checked)}
+          />
+          Include in <b>all</b> sections
+        </label>
+
+        <div className="grid gap-3 max-w-5xl" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))' }}>
           <label className="flex flex-col">
-            <span className="text-sm">Upload Ad image (Cloudinary)</span>
-            <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files?.[0] || null)} />
-            <span className="text-xs opacity-70 mt-1">
-              If you don’t upload a file, you may provide an image URL instead.
-            </span>
+            <span className="text-sm">Categories</span>
+            <select
+              multiple
+              disabled={disableTargetSelectors}
+              value={targets.categories}
+              onChange={(e) => onMultiChange(e, 'categories')}
+              size={Math.min(4, (meta.categories || []).length || 2)}
+            >
+              {(meta.categories || ['top', 'finance']).map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
           </label>
 
-          {!imageFile && (
-            <label className="flex flex-col">
-              <span className="text-sm">Or imageUrl (optional)</span>
-              <input
-                type="url"
-                className="input"
-                placeholder="https://…"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-              />
-            </label>
-          )}
-
-          {(imageFile || imageUrl) && (
-            <div className="mt-2">
-              <div className="text-xs opacity-70 mb-1">Preview</div>
-              <img
-                src={imageFile ? URL.createObjectURL(imageFile) : imageUrl}
-                alt=""
-                style={{ maxWidth: 320, maxHeight: 120, objectFit: 'cover', borderRadius: 8 }}
-              />
-            </div>
-          )}
-        </div>
-      )}
-
-      {mode === 'news' && (
-        <div className="max-w-xl">
           <label className="flex flex-col">
-            <span className="text-sm">Custom News item</span>
-            <select className="input" value={customNewsId} onChange={e => setCustomNewsId(e.target.value)} disabled={loadingNews}>
-              <option value="">Select…</option>
-              {newsOptions.map(n => <option key={n._id} value={n._id}>{n.title}</option>)}
+            <span className="text-sm">Cities</span>
+            <select
+              multiple
+              disabled={disableTargetSelectors}
+              value={targets.cities}
+              onChange={(e) => onMultiChange(e, 'cities')}
+              size={8}
+            >
+              {(meta.cities || []).map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col">
+            <span className="text-sm">States</span>
+            <select
+              multiple
+              disabled={disableTargetSelectors}
+              value={targets.states}
+              onChange={(e) => onMultiChange(e, 'states')}
+              size={8}
+            >
+              {(meta.states || []).map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
             </select>
           </label>
         </div>
-      )}
 
-      {mode === 'empty' && (
-        <div className="max-w-xl">
-          <label className="flex flex-col">
-            <span className="text-sm">Message (optional)</span>
-            <input type="text" className="input" value={message} onChange={e => setMessage(e.target.value)} />
-          </label>
+        <div className="text-xs opacity-70">
+          Tip: When <b>Include in all</b> is checked, the selects are ignored.
+          Specificity order is <b>City</b> &gt; <b>State</b> &gt; <b>Category</b> &gt; All.
         </div>
-      )}
+      </div>
 
-      {/* 16:4 preview */}
+      {/* Content */}
+      <div className="grid gap-3 max-w-3xl" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))' }}>
+        <label className="flex flex-col">
+          <span className="text-sm">Headline</span>
+          <input value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="Shown on news banners" />
+        </label>
+
+        <label className="flex flex-col">
+          <span className="text-sm">Image URL (ad)</span>
+          <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="Cloudinary or full URL" />
+        </label>
+
+        <label className="flex flex-col">
+          <span className="text-sm">Click URL (web)</span>
+          <input value={clickUrl} onChange={(e) => setClickUrl(e.target.value)} placeholder="https://..." />
+        </label>
+
+        <label className="flex flex-col">
+          <span className="text-sm">Deeplink URL (app)</span>
+          <input value={deeplinkUrl} onChange={(e) => setDeeplinkUrl(e.target.value)} placeholder="myapp://..." />
+        </label>
+
+        <label className="flex flex-col">
+          <span className="text-sm">Custom News (optional)</span>
+          <select value={customNewsId} onChange={(e) => onSelectNews(e.target.value)}>
+            <option value="">— none —</option>
+            {newsOptions.map((n) => (
+              <option key={n._id} value={n._id}>
+                {n.title?.slice(0, 50) || n._id}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex flex-col">
+          <span className="text-sm">Custom News Topic (optional)</span>
+          <input value={topic} onChange={(e) => setTopic(e.target.value.toLowerCase())} placeholder="e.g. cricket, finance" />
+          <small className="opacity-70">Used to filter the in-app Custom News page.</small>
+        </label>
+      </div>
+
+      {/* Meta */}
+      <div className="grid gap-3 max-w-3xl" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))' }}>
+        <label className="flex flex-col">
+          <span className="text-sm">Priority (higher wins)</span>
+          <input type="number" value={priority} onChange={(e) => setPriority(toInt(e.target.value) ?? 100)} />
+        </label>
+
+        <label className="flex flex-col">
+          <span className="text-sm">Active From (optional)</span>
+          <input type="datetime-local" value={activeFrom} onChange={(e) => setActiveFrom(e.target.value)} />
+        </label>
+
+        <label className="flex flex-col">
+          <span className="text-sm">Active To (optional)</span>
+          <input type="datetime-local" value={activeTo} onChange={(e) => setActiveTo(e.target.value)} />
+        </label>
+
+        <label className="flex flex-col" style={{ gridColumn: '1 / -1' }}>
+          <span className="text-sm">Message / Headline (optional)</span>
+          <input value={message} onChange={(e) => setMessage(e.target.value)} placeholder="CTA text" />
+        </label>
+      </div>
+
+      {/* Preview */}
       <div className="mt-2">
         <div className="text-sm mb-1">Preview (16:4)</div>
         <div className="p-3 border rounded max-w-3xl">
           <div style={{ aspectRatio: '16 / 4' }} className="w-full">
             <div className="w-full h-full rounded-2xl overflow-hidden relative" style={{ background: '#222' }}>
-              {preview.mode === 'ad' && (imageFile || preview.imageUrl) && (
+              {preview.mode === 'ad' && preview.imageUrl && (
                 <img
-                  src={imageFile ? URL.createObjectURL(imageFile) : preview.imageUrl}
+                  src={preview.imageUrl}
                   alt=""
                   className="absolute inset-0 w-full h-full object-cover opacity-60"
                 />
@@ -228,8 +380,8 @@ export default function BannerConfigForm({ initial, onSaved, onCancel }) {
               <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.35)' }} />
               <div className="relative w-full h-full flex items-center justify-center px-4">
                 <div className="text-white text-sm font-semibold text-center line-clamp-2">
-                  {preview.mode === 'ad' && 'Ad banner (tap opens Custom News)'}
-                  {preview.mode === 'news' && 'News banner (tap opens Custom News)'}
+                  {preview.mode === 'ad' && 'Ad banner'}
+                  {preview.mode === 'news' && 'News banner'}
                   {preview.mode === 'empty' && (preview.message || 'Tap to read more')}
                 </div>
               </div>

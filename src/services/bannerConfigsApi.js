@@ -1,6 +1,4 @@
-// src/services/featureBannerGroupsApi.js
-// Robust base URL detection (Vite or CRA) + consistent error messages.
-
+// src/services/bannerConfigsApi.js
 const API_BASE =
   (typeof import.meta !== "undefined" &&
     import.meta.env &&
@@ -10,7 +8,7 @@ const API_BASE =
     process.env.REACT_APP_API_BASE) ||
   "https://ad-server-qx62.onrender.com";
 
-const BASE = `${API_BASE}/api/feature-banner-groups`;
+const BASE = `${API_BASE}/api/banner-configs`;
 
 function buildURL(path = "", query = {}) {
   const url = new URL(`${BASE}${path}`);
@@ -38,24 +36,31 @@ async function http(method, path = "", body, query) {
   return res.json();
 }
 
-export async function listGroups() {
-  return http("GET");
+export function list(params = {}) {
+  // supports: mode, activeOnly, sectionType, sectionValue
+  return http("GET", "", undefined, params);
 }
 
-export async function listActive(category) {
-  return http("GET", "/active", undefined, { category });
+export function getOne(id) {
+  if (!id) throw new Error("Missing id");
+  return http("GET", `/${id}`);
 }
 
-export async function createGroup(payload) {
+export function create(payload) {
   return http("POST", "", payload);
 }
 
-export async function updateGroup(id, payload) {
+export function update(id, payload) {
   if (!id) throw new Error("Missing id");
   return http("PUT", `/${id}`, payload);
 }
 
-export async function deleteGroup(id) {
+export function remove(id) {
   if (!id) throw new Error("Missing id");
   return http("DELETE", `/${id}`);
+}
+
+export function meta() {
+  // { categories:[], cities:[], states:[] }
+  return http("GET", "/meta");
 }

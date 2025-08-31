@@ -1,3 +1,7 @@
+// src/components/BannerConfigForm.jsx
+// Drop-in update: adds per-section targeting (includeAll / categories / cities / states)
+// Keeps your existing behavior, axios usage, and legacy knobs.
+
 import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 
@@ -20,7 +24,15 @@ const emptyForm = {
   clickUrl: '',
   deeplinkUrl: '',
   customNewsId: '',
-  topic: '',          // 🆕 Custom News topic / category (lowercase)
+  topic: '',          // Custom News topic / category (lowercase)
+
+  // NEW: per-section targeting
+  targets: {
+    includeAll: true,
+    categories: [],   // e.g., ['top','finance']
+    cities: [],       // e.g., ['Jalandhar']
+    states: [],       // e.g., ['Punjab']
+  },
 
   // meta
   priority: 100,
@@ -40,6 +52,9 @@ export default function BannerConfigsPage() {
   const [filterMode, setFilterMode] = useState('');
   const [error, setError] = useState('');
 
+  // NEW: enums for pickers
+  const [meta, setMeta] = useState({ categories: ['top', 'finance'], cities: [], states: [] });
+
   const filtered = useMemo(
     () => list.filter((x) => !filterMode || x.mode === filterMode),
     [list, filterMode]
@@ -48,6 +63,7 @@ export default function BannerConfigsPage() {
   useEffect(() => {
     fetchAll();
     fetchCustomNews();
+    fetchMeta();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -74,6 +90,15 @@ export default function BannerConfigsPage() {
     }
   }
 
+  async function fetchMeta() {
+    try {
+      const res = await axios.get(`${API_BASE}/api/banner-configs/meta`);
+      if (res?.data) setMeta(res.data);
+    } catch {
+      // keep defaults if meta not available
+    }
+  }
+
   function resetForm() {
     setForm(emptyForm);
     setEditingId(null);
@@ -96,7 +121,15 @@ export default function BannerConfigsPage() {
       clickUrl: doc.payload?.clickUrl || '',
       deeplinkUrl: doc.payload?.deeplinkUrl || '',
       customNewsId: doc.payload?.customNewsId || doc.customNewsId || '',
-      topic: (doc.payload?.topic || '').toLowerCase(), // 🆕
+      topic: (doc.payload?.topic || '').toLowerCase(),
+
+      // NEW: targets (back-compat default to includeAll)
+      targets: {
+        includeAll: doc.targets?.includeAll !== undefined ? !!doc.targets.includeAll : true,
+        categories: doc.targets?.categories || [],
+        cities: doc.targets?.cities || [],
+        states: doc.targets?.states || [],
+      },
 
       priority: doc.priority ?? 100,
       isActive: !!doc.isActive,
@@ -110,22 +143,57 @@ export default function BannerConfigsPage() {
   function onChange(e) {
     const { name, value, type, checked } = e.target;
 
+    // helpers for nested updates
+    function update(path, val) {
+      setForm((f) => {
+        const next = { ...f };
+        let ref = next;
+        const keys = path.split('.');
+        for (let i = 0; i < keys.length - 1; i++) {
+          const k = keys[i];
+          ref[k] = ref[k] ?? {};
+          ref = ref[k];
+        }
+        ref[keys[keys.length - 1]] = val;
+        return next;
+      });
+    }
+
+    // lower-case for category/topic
+    if (name === 'category') return update('category', String(value).toLowerCase());
+    if (name === 'topic')    return update('topic', String(value).toLowerCase());
+
+    // targets.includeAll checkbox
+    if (name === 'targets.includeAll') {
+      return update('targets.includeAll', !!checked);
+    }
+
+    // when changing custom news, auto-fill topic if available
+    if (name === 'customNewsId') {
+      const sel = customNews.find((n) => n._id === value);
+      const autoTopic = (!form.topic && sel?.topic) ? String(sel.topic).toLowerCase() : form.topic;
+      return setForm((f) => ({ ...f, customNewsId: value, topic: autoTopic }));
+    }
+
+    setForm((f) => ({
+      ...f,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+  }
+
+  function onMultiChange(e, path) {
+    const values = Array.from(e.target.selectedOptions).map((o) => o.value);
     setForm((f) => {
-      // lower-case for category/topic
-      if (name === 'category') return { ...f, category: value.toLowerCase() };
-      if (name === 'topic')    return { ...f, topic: value.toLowerCase() };
-
-      // when changing custom news, auto-fill topic if the item has one and the field is empty
-      if (name === 'customNewsId') {
-        const sel = customNews.find((n) => n._id === value);
-        const autoTopic = (!f.topic && sel?.topic) ? String(sel.topic).toLowerCase() : f.topic;
-        return { ...f, customNewsId: value, topic: autoTopic };
+      const next = { ...f };
+      let ref = next;
+      const keys = path.split('.');
+      for (let i = 0; i < keys.length - 1; i++) {
+        const k = keys[i];
+        ref[k] = ref[k] ?? {};
+        ref = ref[k];
       }
-
-      return {
-        ...f,
-        [name]: type === 'checkbox' ? checked : value,
-      };
+      ref[keys[keys.length - 1]] = values;
+      return next;
     });
   }
 
@@ -143,13 +211,24 @@ export default function BannerConfigsPage() {
       clickUrl: form.clickUrl || undefined,
       deeplinkUrl: form.deeplinkUrl || undefined,
       customNewsId: form.mode === 'news' ? (form.customNewsId || undefined) : undefined,
-      topic: form.topic || undefined, // 🆕 pass topic/category through to payload
+      topic: form.topic || undefined,
+    };
+
+    // NEW: per-section targets
+    const targets = {
+      includeAll: !!form.targets.includeAll,
+      categories: form.targets.includeAll
+        ? []
+        : (form.targets.categories || []).map((c) => String(c).toLowerCase()),
+      cities: form.targets.includeAll ? [] : (form.targets.cities || []),
+      states: form.targets.includeAll ? [] : (form.targets.states || []),
     };
 
     const body = {
       mode: form.mode,
       anchor,
       payload,
+      targets, // <<<<<<<< important
       // legacy-compatible knobs (optional)
       startAfter: form.anchorKind === 'slot' ? Number(form.nth || 10) : undefined,
       repeatEvery:
@@ -222,6 +301,8 @@ export default function BannerConfigsPage() {
       alert('Toggle failed');
     }
   }
+
+  const disableTargetSelectors = !!form.targets.includeAll;
 
   return (
     <div className="container">
@@ -368,7 +449,6 @@ export default function BannerConfigsPage() {
             </select>
           </div>
 
-          {/* 🆕 Topic / Category for Custom News */}
           <div>
             <label>Custom News Topic (optional)</label>
             <input
@@ -378,6 +458,72 @@ export default function BannerConfigsPage() {
               placeholder="e.g. cricket, finance"
             />
             <small style={{ opacity: 0.7 }}>Used to filter the in-app Custom News page.</small>
+          </div>
+
+          {/* --------- NEW: Targets (per-section) --------- */}
+          <div style={{ gridColumn: '1 / -1', marginTop: 6 }}>
+            <strong>Show in (Sections)</strong>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              id="includeAll"
+              name="targets.includeAll"
+              type="checkbox"
+              checked={!!form.targets.includeAll}
+              onChange={onChange}
+            />
+            <label htmlFor="includeAll">Include in <b>all</b> sections</label>
+          </div>
+
+          <div>
+            <label>Categories</label>
+            <select
+              multiple
+              disabled={disableTargetSelectors}
+              value={form.targets.categories}
+              onChange={(e) => onMultiChange(e, 'targets.categories')}
+              size={Math.min(4, (meta.categories || []).length || 2)}
+            >
+              {(meta.categories || ['top', 'finance']).map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label>Cities</label>
+            <select
+              multiple
+              disabled={disableTargetSelectors}
+              value={form.targets.cities}
+              onChange={(e) => onMultiChange(e, 'targets.cities')}
+              size={8}
+            >
+              {(meta.cities || []).map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label>States</label>
+            <select
+              multiple
+              disabled={disableTargetSelectors}
+              value={form.targets.states}
+              onChange={(e) => onMultiChange(e, 'targets.states')}
+              size={8}
+            >
+              {(meta.states || []).map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ gridColumn: '1 / -1', fontSize: 12, opacity: 0.8 }}>
+            Tip: When <b>Include in all</b> is checked, the selects are ignored.
+            Specificity order is <b>City</b> &gt; <b>State</b> &gt; <b>Category</b> &gt; All.
           </div>
         </div>
 
@@ -435,6 +581,17 @@ export default function BannerConfigsPage() {
 function Card({ doc, onEdit, onDelete, onToggle }) {
   const anchor = doc.anchor || {};
   const p = doc.payload || {};
+  const t = doc.targets || {};
+
+  function renderTargets() {
+    if (!t || t.includeAll) return 'All';
+    const parts = [];
+    if (t.cities?.length) parts.push(`Cities: ${t.cities.length}`);
+    if (t.states?.length) parts.push(`States: ${t.states.length}`);
+    if (t.categories?.length) parts.push(`Cats: ${t.categories.join(',')}`);
+    return parts.join(' · ') || 'All';
+    }
+
   return (
     <div
       className="card"
@@ -473,6 +630,11 @@ function Card({ doc, onEdit, onDelete, onToggle }) {
             </>
           )}
         </div>
+
+        <div>
+          <span style={{ opacity: 0.7 }}>Targets:</span> {renderTargets()}
+        </div>
+
         {doc.message ? (
           <div>
             <span style={{ opacity: 0.7 }}>Message:</span> {doc.message}
