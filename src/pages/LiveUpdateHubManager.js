@@ -14,14 +14,15 @@ export default function LiveUpdateHubManager() {
   const [sections, setSections] = useState([]); // [{...section, entries: [...]}, ...]
   const [error, setError] = useState("");
 
-  // Section form state
+  // -------- Section form state (Create) --------
   const [name, setName] = useState("");
   const [heading, setHeading] = useState("");
   const [placementIndex, setPlacementIndex] = useState("");
   const [sortIndex, setSortIndex] = useState(0);
   const [enabled, setEnabled] = useState(true);
+  const [backgroundImageUrl, setBackgroundImageUrl] = useState(""); // NEW
 
-  // Edit section state (inline)
+  // -------- Edit section state (inline) --------
   const [editingSectionId, setEditingSectionId] = useState(null);
   const [editSection, setEditSection] = useState({
     name: "",
@@ -29,9 +30,10 @@ export default function LiveUpdateHubManager() {
     placementIndex: "",
     sortIndex: 0,
     enabled: true,
+    backgroundImageUrl: "", // NEW
   });
 
-  // Entry form state (per section)
+  // -------- Entry form state (per section) --------
   const initialEntryForm = {
     title: "",
     description: "",
@@ -39,7 +41,7 @@ export default function LiveUpdateHubManager() {
     sortIndex: 0,
     enabled: true,
     media: null,
-    source: "", // ✅ include source in initial form state
+    source: "", // keep source
   };
   const [entryForms, setEntryForms] = useState({}); // { [sectionId]: { ...fields } }
 
@@ -88,6 +90,7 @@ export default function LiveUpdateHubManager() {
         placementIndex: Number(placementIndex),
         sortIndex: Number(sortIndex) || 0,
         enabled: !!enabled,
+        backgroundImageUrl: (backgroundImageUrl || "").trim(), // NEW
       };
       const res = await fetch(`${API_BASE}/api/live-update-hub/sections`, {
         method: "POST",
@@ -104,6 +107,7 @@ export default function LiveUpdateHubManager() {
       setPlacementIndex("");
       setSortIndex(0);
       setEnabled(true);
+      setBackgroundImageUrl(""); // NEW
       await load();
     } catch (e) {
       setError(String(e.message || e));
@@ -118,6 +122,7 @@ export default function LiveUpdateHubManager() {
       placementIndex: s.placementIndex ?? "",
       sortIndex: s.sortIndex ?? 0,
       enabled: !!s.enabled,
+      backgroundImageUrl: s.backgroundImageUrl || "", // NEW
     });
   }
 
@@ -130,6 +135,7 @@ export default function LiveUpdateHubManager() {
         placementIndex: Number(editSection.placementIndex),
         sortIndex: Number(editSection.sortIndex) || 0,
         enabled: !!editSection.enabled,
+        backgroundImageUrl: (editSection.backgroundImageUrl || "").trim(), // NEW
       };
       const res = await fetch(`${API_BASE}/api/live-update-hub/sections/${id}`, {
         method: "PATCH",
@@ -162,6 +168,28 @@ export default function LiveUpdateHubManager() {
     }
   }
 
+  // Upload/replace a section's Swipe BG via file
+  async function uploadBgFile(sectionId, file) {
+    if (!file) return;
+    setError("");
+    try {
+      const fd = new FormData();
+      // BACKEND EXPECTS FIELD NAME 'background'
+      fd.append("background", file);
+      const res = await fetch(`${API_BASE}/api/live-update-hub/sections/${sectionId}/background`, {
+        method: "PATCH",
+        body: fd,
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`BG upload failed: ${res.status} ${txt}`);
+      }
+      await load(); // refresh to see new URL
+    } catch (e) {
+      setError(String(e.message || e));
+    }
+  }
+
   // -------- Entries --------
   function onEntryField(sectionId, field, value) {
     setEntryForms((prev) => ({
@@ -189,7 +217,7 @@ export default function LiveUpdateHubManager() {
       fd.append("title", (form.title || "").trim());
       fd.append("description", (form.description || "").trim());
       if (form.targetUrl) fd.append("targetUrl", form.targetUrl.trim());
-      if (form.source) fd.append("source", form.source.trim()); // ✅ send source
+      if (form.source) fd.append("source", form.source.trim());
       fd.append("sortIndex", String(Number(form.sortIndex) || 0));
       fd.append("enabled", String(!!form.enabled));
 
@@ -272,6 +300,26 @@ export default function LiveUpdateHubManager() {
             <span className="text-sm">Sort Index</span>
             <input className="border p-2 rounded" type="number" value={sortIndex} onChange={(e) => setSortIndex(e.target.value)} placeholder="0" />
           </label>
+
+          {/* NEW: Swipe BG Image URL (optional) */}
+          <label className="flex flex-col md:col-span-2">
+            <span className="text-sm">Swipe BG Image URL (optional)</span>
+            <input
+              className="border p-2 rounded"
+              placeholder="https://cdn.example.com/bg.jpg"
+              value={backgroundImageUrl}
+              onChange={(e) => setBackgroundImageUrl(e.target.value)}
+            />
+            {backgroundImageUrl ? (
+              <img
+                src={backgroundImageUrl}
+                alt="bg preview"
+                style={{ marginTop: 8, maxWidth: 320, borderRadius: 8 }}
+                onError={(ev) => (ev.currentTarget.style.display = "none")}
+              />
+            ) : null}
+          </label>
+
           <label className="flex items-center gap-2">
             <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
             <span>Enabled</span>
@@ -316,6 +364,39 @@ export default function LiveUpdateHubManager() {
                         <span className="text-sm">Sort Index</span>
                         <input className="border p-2 rounded" type="number" value={editSection.sortIndex} onChange={(e) => setEditSection({ ...editSection, sortIndex: e.target.value })} />
                       </label>
+
+                      {/* NEW: Swipe BG controls in EDIT */}
+                      <label className="flex flex-col md:col-span-2">
+                        <span className="text-sm">Swipe BG Image URL</span>
+                        <input
+                          className="border p-2 rounded"
+                          value={editSection.backgroundImageUrl}
+                          onChange={(e) => setEditSection({ ...editSection, backgroundImageUrl: e.target.value })}
+                          placeholder="https://cdn.example.com/bg.jpg"
+                        />
+                        {(editSection.backgroundImageUrl || s.backgroundImageUrl) ? (
+                          <img
+                            src={editSection.backgroundImageUrl || s.backgroundImageUrl}
+                            alt="bg preview"
+                            style={{ marginTop: 8, maxWidth: 360, borderRadius: 8 }}
+                            onError={(ev) => (ev.currentTarget.style.display = "none")}
+                          />
+                        ) : null}
+                      </label>
+
+                      <label className="flex flex-col md:col-span-2">
+                        <span className="text-sm">Upload/Replace Swipe BG (image)</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="border p-2 rounded"
+                          onChange={(e) => uploadBgFile(s._id, e.target.files?.[0] || null)}
+                        />
+                        <span className="text-xs text-gray-500 mt-1">
+                          This calls <code>PATCH /sections/{s._id}/background</code> with field <b>background</b>.
+                        </span>
+                      </label>
+
                       <label className="flex items-center gap-2">
                         <input type="checkbox" checked={editSection.enabled} onChange={(e) => setEditSection({ ...editSection, enabled: e.target.checked })} />
                         <span>Enabled</span>
@@ -326,14 +407,29 @@ export default function LiveUpdateHubManager() {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="font-semibold">
-                          {s.heading} <span className="text-xs text-gray-500">({s.name})</span>
-                          {!s.enabled ? <span className="ml-2 text-xs px-2 py-0.5 rounded bg-gray-300">disabled</span> : null}
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          placementIndex: {s.placementIndex} • sortIndex: {s.sortIndex}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        {s.backgroundImageUrl ? (
+                          <img
+                            src={s.backgroundImageUrl}
+                            alt=""
+                            style={{ width: 64, height: 36, objectFit: "cover", borderRadius: 6 }}
+                            onError={(ev) => (ev.currentTarget.style.display = "none")}
+                          />
+                        ) : null}
+                        <div>
+                          <div className="font-semibold">
+                            {s.heading} <span className="text-xs text-gray-500">({s.name})</span>
+                            {!s.enabled ? <span className="ml-2 text-xs px-2 py-0.5 rounded bg-gray-300">disabled</span> : null}
+                          </div>
+                          <div className="text-xs text-gray-600">
+                            placementIndex: {s.placementIndex} • sortIndex: {s.sortIndex}
+                          </div>
+                          {s.backgroundImageUrl ? (
+                            <div className="text-xs text-gray-600">
+                              BG: <a className="underline" href={s.backgroundImageUrl} target="_blank" rel="noreferrer">open</a>
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                       <div className="flex gap-2">
@@ -364,7 +460,7 @@ export default function LiveUpdateHubManager() {
                               <div className="text-xs text-gray-600">
                                 sortIndex: {e.sortIndex}
                                 {e.targetUrl ? <> • <a href={e.targetUrl} target="_blank" rel="noreferrer" className="underline">link</a></> : null}
-                                {e.source ? <> • source: <span className="italic">{e.source}</span></> : null} {/* ✅ show source */}
+                                {e.source ? <> • source: <span className="italic">{e.source}</span></> : null}
                               </div>
                             </div>
                           </div>
@@ -412,7 +508,7 @@ export default function LiveUpdateHubManager() {
                       />
                     </label>
 
-                    {/* ✅ NEW: Source */}
+                    {/* Source */}
                     <label className="flex flex-col">
                       <span className="text-sm">Source (e.g., Reuters)</span>
                       <input
