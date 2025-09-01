@@ -51,7 +51,7 @@ export default function CartoonHubManager() {
   const [audValue, setAudValue]   = useState('Top News'); // value depends on type
 
   // Entry form (create)
-  const [imageUrl, setImageUrl] = useState('');
+  const [cloudinaryUrl, setCloudinaryUrl] = useState('');
   const [media, setMedia]       = useState(null);
   const [caption, setCaption]   = useState('');
   const [entSort, setEntSort]   = useState(0);
@@ -66,6 +66,7 @@ export default function CartoonHubManager() {
     setLoading(true);
     setError('');
     try {
+      // backend now supports GET /api/cartoons as an alias of /sections
       const res = await api.get(`${BASE}`);
       const arr = Array.isArray(res.data) ? res.data : [];
       setSections(arr);
@@ -100,11 +101,11 @@ export default function CartoonHubManager() {
     setSortIndex(s.sortIndex ?? 0);
     setEnabled(!!s.enabled);
 
-    // audience: accept both {audienceType, audienceValue} or nested s.audience
-    const t = (s.audienceType || s?.audience?.type || 'category').toString();
-    const v = (s.audienceValue || s?.audience?.value || (t === 'any' ? '' : 'Top News')).toString();
-    setAudType(t);
-    setAudValue(v);
+    // audience: prefer nested audience {kind,value}, fallback to flat fields if present
+    const kind = (s?.audience?.kind || s.audienceKind || 'any').toString();
+    const value = (s?.audience?.value || s.audienceValue || (kind === 'any' ? '' : 'Top News')).toString();
+    setAudType(kind);
+    setAudValue(value);
   }
 
   async function saveSection(e) {
@@ -127,7 +128,8 @@ export default function CartoonHubManager() {
         repeatEvery: Math.max(0, Number(repeatEvery) || 0),
         sortIndex: Number(sortIndex) || 0,
         enabled: !!enabled,
-        audienceType: audType,
+        // ✅ backend expects audienceKind/audienceValue (it also accepts aliases)
+        audienceKind: audType,
         audienceValue: audType === 'any' ? '' : audValue.trim(),
       };
 
@@ -158,7 +160,7 @@ export default function CartoonHubManager() {
   }
 
   function resetEntryForm() {
-    setImageUrl('');
+    setCloudinaryUrl('');
     setMedia(null);
     setCaption('');
     setEntSort(0);
@@ -168,19 +170,20 @@ export default function CartoonHubManager() {
   async function addEntry(e) {
     e.preventDefault();
     if (!selectedId) return alert('Select a section first.');
-    if (!media && !imageUrl.trim()) {
+    if (!media && !cloudinaryUrl.trim()) {
       return alert('Provide an image file or paste a Cloudinary image URL.');
     }
 
     try {
       const fd = new FormData();
       if (media) fd.append('media', media); // field MUST be "media"
-      if (imageUrl.trim()) fd.append('imageUrl', imageUrl.trim());
+      if (cloudinaryUrl.trim()) fd.append('cloudinaryUrl', cloudinaryUrl.trim()); // ✅ expected by backend
       if (caption.trim()) fd.append('caption', caption.trim());
       fd.append('sortIndex', String(Number(entSort) || 0));
       fd.append('enabled', String(!!entEnabled));
 
-      await api.post(`${BASE}/sections/${selectedId}/entries`, fd);
+      // ✅ items endpoint
+      await api.post(`${BASE}/sections/${selectedId}/items`, fd);
       resetEntryForm();
       load();
     } catch (err) {
@@ -191,7 +194,8 @@ export default function CartoonHubManager() {
 
   async function toggleEntry(eid, current) {
     try {
-      await api.patch(`${BASE}/entries/${eid}`, { enabled: !current });
+      // ✅ items endpoint
+      await api.patch(`${BASE}/items/${eid}`, { enabled: !current });
       load();
     } catch (err) {
       console.error('Toggle failed:', err);
@@ -201,7 +205,8 @@ export default function CartoonHubManager() {
   async function deleteEntry(eid) {
     if (!window.confirm('Delete this image?')) return;
     try {
-      await api.delete(`${BASE}/entries/${eid}`);
+      // ✅ items endpoint
+      await api.delete(`${BASE}/items/${eid}`);
       load();
     } catch (err) {
       console.error('Delete failed:', err);
@@ -282,14 +287,14 @@ export default function CartoonHubManager() {
   }
 
   function scopeLabel(s) {
-    const t = (s.audienceType || s?.audience?.type || 'any').toString();
-    const v = (s.audienceValue || s?.audience?.value || '').toString();
-    if (t === 'any' || !v) return 'All';
-    if (t === 'category') return `Category: ${v}`;
-    if (t === 'state') return `State: ${v}`;
-    if (t === 'city') return `City: ${v}`;
+    const k = (s?.audience?.kind || s.audienceKind || 'any').toString();
+    const v = (s?.audience?.value || s.audienceValue || '').toString();
+    if (k === 'any' || !v) return 'All';
+    if (k === 'category') return `Category: ${v}`;
+    if (k === 'state') return `State: ${v}`;
+    if (k === 'city') return `City: ${v}`;
     return 'All';
-    }
+  }
 
   return (
     <div className="p-4 text-white">
@@ -365,7 +370,7 @@ export default function CartoonHubManager() {
                 {/* little horizontal preview strip */}
                 <div className="mt-2 overflow-x-auto">
                   <div className="flex gap-2">
-                    {(s.entries || []).map((e) => (
+                    {(s.items || []).map((e) => (
                       <img
                         key={e._id}
                         src={e.imageUrl}
@@ -390,7 +395,7 @@ export default function CartoonHubManager() {
           {/* Add entry */}
           <form onSubmit={addEntry} className="bg-gray-800 rounded p-3 flex flex-wrap gap-2 items-center">
             <input type="file" accept="image/*" className="p-2 bg-gray-700 rounded" onChange={(e) => setMedia(e.target.files?.[0] || null)} />
-            <input className="p-2 bg-gray-700 rounded" placeholder="…or paste Cloudinary URL" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
+            <input className="p-2 bg-gray-700 rounded" placeholder="…or paste Cloudinary URL" value={cloudinaryUrl} onChange={(e) => setCloudinaryUrl(e.target.value)} />
             <input className="p-2 bg-gray-700 rounded w-48" placeholder="Caption (optional)" value={caption} onChange={(e) => setCaption(e.target.value)} />
             <input className="p-2 bg-gray-700 rounded w-32" type="number" placeholder="Sort Index" value={entSort} onChange={(e) => setEntSort(e.target.value)} />
             <label className="flex items-center gap-2">
@@ -405,7 +410,7 @@ export default function CartoonHubManager() {
             <div className="text-sm opacity-70 mt-2">Select a section to manage images.</div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mt-3">
-              {[...(selectedSection.entries || [])].sort(by('sortIndex')).map((e) => (
+              {[...(selectedSection.items || [])].sort(by('sortIndex')).map((e) => (
                 <div key={e._id} className="bg-black rounded p-2">
                   <img
                     src={e.imageUrl}
@@ -427,7 +432,7 @@ export default function CartoonHubManager() {
                   </div>
                 </div>
               ))}
-              {(selectedSection.entries || []).length === 0 && (
+              {(selectedSection.items || []).length === 0 && (
                 <div className="text-sm opacity-70">No images yet.</div>
               )}
             </div>
