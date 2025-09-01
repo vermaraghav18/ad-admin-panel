@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { CartoonApi } from '../services/cartoonApi';
 
 export default function CartoonSections() {
@@ -23,9 +24,11 @@ export default function CartoonSections() {
   return (
     <div className="p-4">
       <h2>Cartoon Sections</h2>
+
       <div className="mb-2">
-        <a className="btn btn-primary" href="#/cartoons/sections/new">+ New Section</a>
+        <Link className="btn btn-primary" to="/cartoons/sections/new">+ New Section</Link>
       </div>
+
       {loading ? <div>Loading...</div> : (
         <table className="table">
           <thead>
@@ -42,8 +45,8 @@ export default function CartoonSections() {
                 <td>{s.injection?.afterNth}/{s.injection?.repeatEvery}/{s.injection?.repeatCount}</td>
                 <td>{s.enabled ? 'Yes' : 'No'}</td>
                 <td>
-                  <a href={`#/cartoons/sections/${s._id}`} className="btn btn-sm btn-outline-secondary">Edit</a>{' '}
-                  <a href={`#/cartoons/entries?sectionId=${s._id}`} className="btn btn-sm btn-outline-primary">Entries</a>{' '}
+                  <Link to={`/cartoons/sections/${s._id}`} className="btn btn-sm btn-outline-secondary">Edit</Link>{' '}
+                  <Link to={`/cartoons/entries?sectionId=${s._id}`} className="btn btn-sm btn-outline-primary">Entries</Link>{' '}
                   <button className="btn btn-sm btn-outline-danger" onClick={() => del(s._id)}>Delete</button>
                 </td>
               </tr>

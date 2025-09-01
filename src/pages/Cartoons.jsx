@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { CartoonApi } from '../services/cartoonApi';
 
-export default function Cartoons({ query }) {
-  const sectionId = query?.sectionId || '';
+export default function Cartoons() {
+  const [searchParams] = useSearchParams();
+  const sectionId = searchParams.get('sectionId') || '';
   const [rows, setRows] = useState([]);
   const [sections, setSections] = useState([]);
 
@@ -29,7 +31,8 @@ export default function Cartoons({ query }) {
     <div className="p-4">
       <h2>Cartoon Entries</h2>
       <div className="mb-2">
-        <a className="btn btn-primary" href={`#/cartoons/entries/new${sectionId?`?sectionId=${sectionId}`:''}`}>+ New Entry</a>
+        <Link className="btn btn-primary"
+              to={`/cartoons/entries/new${sectionId ? `?sectionId=${sectionId}` : ''}`}>+ New Entry</Link>
       </div>
       <table className="table">
         <thead>
@@ -46,7 +49,7 @@ export default function Cartoons({ query }) {
               <td>{e.publishedAt ? new Date(e.publishedAt).toLocaleString() : '-'}</td>
               <td>{(e.variants||[]).map(v=>v.aspect).join(', ')}</td>
               <td>
-                <a className="btn btn-sm btn-outline-secondary" href={`#/cartoons/entries/${e._id}`}>Edit</a>{' '}
+                <Link className="btn btn-sm btn-outline-secondary" to={`/cartoons/entries/${e._id}`}>Edit</Link>{' '}
                 <button className="btn btn-sm btn-outline-danger" onClick={()=>del(e._id)}>Delete</button>
               </td>
             </tr>

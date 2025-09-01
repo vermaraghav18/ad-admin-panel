@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { CartoonApi } from '../services/cartoonApi';
 
 const empty = {
@@ -8,12 +9,15 @@ const empty = {
   variants: [{ aspect:'16:9', url:'' }],
 };
 
-export default function CartoonEdit({ params, query }) {
-  const id = params?.id;
+export default function CartoonEdit() {
+  const { id } = useParams();                 // 'new' or real id
   const isNew = id === 'new';
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  const qSection = searchParams.get('sectionId') || '';
   const [model, setModel] = useState(empty);
   const [sections, setSections] = useState([]);
-  const qSection = query?.sectionId || '';
 
   useEffect(() => {
     (async () => {
@@ -44,7 +48,7 @@ export default function CartoonEdit({ params, query }) {
     };
     if (isNew) await CartoonApi.createEntry(payload);
     else await CartoonApi.updateEntry(id, payload);
-    window.location.hash = `#/cartoons/entries?sectionId=${payload.sectionId}`;
+    navigate(`/cartoons/entries?sectionId=${payload.sectionId}`);
   };
 
   const toggleDay = (d) => {
@@ -56,7 +60,10 @@ export default function CartoonEdit({ params, query }) {
   const addVariant = () => setModel({...model, variants:[...model.variants, { aspect:'16:9', url:'' }]});
   const rmVariant = (i) => setModel({...model, variants:model.variants.filter((_,idx)=>idx!==i)});
 
-  const sectionOptions = useMemo(()=>sections.map(s => <option key={s._id} value={s._id}>{s.title}</option>), [sections]);
+  const sectionOptions = useMemo(
+    () => sections.map(s => <option key={s._id} value={s._id}>{s.title}</option>),
+    [sections]
+  );
 
   return (
     <div className="p-4">
@@ -128,7 +135,7 @@ export default function CartoonEdit({ params, query }) {
 
       <div className="mt-3">
         <button className="btn btn-primary" onClick={save}>Save</button>{' '}
-        <a className="btn" href={`#/cartoons/entries?sectionId=${model.sectionId}`}>Cancel</a>
+        <button className="btn" onClick={()=>navigate(`/cartoons/entries?sectionId=${model.sectionId}`)}>Cancel</button>
       </div>
     </div>
   );

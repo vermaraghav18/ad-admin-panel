@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { CartoonApi } from '../services/cartoonApi';
 
-export default function CartoonSectionEdit({ params }) {
-  const id = params?.id; // from your router
+export default function CartoonSectionEdit() {
+  const { id } = useParams();           // 'new' or real id
   const isNew = id === 'new';
+  const navigate = useNavigate();
+
   const [model, setModel] = useState({
     title: '', sectionKey: '', scopeType: 'global', scopeValue: '',
     placement: 'both',
@@ -24,7 +27,7 @@ export default function CartoonSectionEdit({ params }) {
   const save = async () => {
     if (isNew) await CartoonApi.createSection(model);
     else await CartoonApi.updateSection(id, model);
-    window.location.hash = '#/cartoons/sections';
+    navigate('/cartoons/sections');
   };
 
   return (
@@ -43,7 +46,8 @@ export default function CartoonSectionEdit({ params }) {
         </select>
 
         <label>Scope Value</label>
-        <input value={model.scopeValue||''} onChange={e=>setModel({...model,scopeValue:e.target.value})} placeholder="Top News / Delhi / Mumbai" />
+        <input value={model.scopeValue||''} onChange={e=>setModel({...model,scopeValue:e.target.value})}
+               placeholder="Top News / Delhi / Mumbai" />
 
         <label>Placement</label>
         <select value={model.placement} onChange={e=>setModel({...model,placement:e.target.value})}>
@@ -52,24 +56,29 @@ export default function CartoonSectionEdit({ params }) {
 
         <label>Injection</label>
         <div>
-          afterNth: <input type="number" value={model.injection.afterNth}
+          afterNth:{' '}
+          <input type="number" value={model.injection.afterNth}
             onChange={e=>setModel({...model,injection:{...model.injection,afterNth:+e.target.value}})} style={{width:90}} />
-          &nbsp; every: <input type="number" value={model.injection.repeatEvery}
+          {' '}every:{' '}
+          <input type="number" value={model.injection.repeatEvery}
             onChange={e=>setModel({...model,injection:{...model.injection,repeatEvery:+e.target.value}})} style={{width:90}} />
-          &nbsp; count: <input type="number" value={model.injection.repeatCount}
+          {' '}count:{' '}
+          <input type="number" value={model.injection.repeatCount}
             onChange={e=>setModel({...model,injection:{...model.injection,repeatCount:+e.target.value}})} style={{width:90}} />
         </div>
 
         <label>Enabled</label>
-        <input type="checkbox" checked={!!model.enabled} onChange={e=>setModel({...model,enabled:e.target.checked})} />
+        <input type="checkbox" checked={!!model.enabled}
+               onChange={e=>setModel({...model,enabled:e.target.checked})} />
 
         <label>Sort Index</label>
-        <input type="number" value={model.sortIndex} onChange={e=>setModel({...model,sortIndex:+e.target.value})} />
+        <input type="number" value={model.sortIndex}
+               onChange={e=>setModel({...model,sortIndex:+e.target.value})} />
       </div>
 
       <div className="mt-3">
         <button className="btn btn-primary" onClick={save}>Save</button>{' '}
-        <a className="btn" href="#/cartoons/sections">Cancel</a>
+        <button className="btn" onClick={()=>navigate('/cartoons/sections')}>Cancel</button>
       </div>
     </div>
   );

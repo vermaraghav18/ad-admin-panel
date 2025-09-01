@@ -317,7 +317,7 @@ function App() {
           <Link to="/live-update-hub" style={{ marginRight: '1rem' }}>⚡ Live Update Hub</Link>
           {/* Cartoons */}
         <Link to="/cartoons/sections" style={{ marginRight: '1rem' }}>🎨 Cartoons</Link>
-        <Link to="/cartoons/entries"  style={{ marginRight: '1rem' }}>🖼️ Cartoon Entries</Link>
+<Link to="/cartoons/entries"  style={{ marginRight: '1rem' }}>🖼️ Cartoon Entries</Link>
 
 
           {/* ✅ New single entry point for Cartoons */}
@@ -345,14 +345,10 @@ function App() {
 
 
           {/* Back-compat: old /cartoons* paths → /cartoon-hub */}
-          <Route path="/cartoons" element={<Navigate to="/cartoon-hub" replace />} />
-          <Route path="/cartoons/new" element={<Navigate to="/cartoon-hub" replace />} />
-          <Route path="/cartoons/:id" element={<Navigate to="/cartoon-hub" replace />} />
-
           <Route path="/cartoons/sections" element={<CartoonSections />} />
-          <Route path="/cartoons/sections/:id" element={<CartoonSectionEdit />} />
-          <Route path="/cartoons/entries" element={<Cartoons />} />
-          <Route path="/cartoons/entries/:id" element={<CartoonEdit />} />
+<Route path="/cartoons/sections/:id" element={<CartoonSectionEdit />} />
+<Route path="/cartoons/entries" element={<Cartoons />} />
+<Route path="/cartoons/entries/:id" element={<CartoonEdit />} />
 
           {/* Sections (existing) */}
           <Route path="/sections" element={<SectionsList />} />
