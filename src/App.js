@@ -28,8 +28,11 @@ import BannerConfigsPage from './pages/BannerConfigsPage';
 // ✅ NEW: Feature Banner Groups (grouped, category-scoped feature banners)
 import FeatureBannerGroupsManager from './pages/FeatureBannerGroupsManager';
 
-// ✅ NEW: Cartoon Hub (unified manager)
-import CartoonHubManager from './pages/CartoonHubManager';
+// in src/App.js (add routes somewhere in your <Routes/> / hash-router switch)
+import CartoonSections from './pages/CartoonSections';
+import CartoonSectionEdit from './pages/CartoonSectionEdit';
+import Cartoons from './pages/Cartoons';
+import CartoonEdit from './pages/CartoonEdit';
 
 import SectionsList from './pages/SectionsList';
 import SectionEdit from './pages/SectionEdit';
@@ -312,9 +315,12 @@ function App() {
           <Link to="/banner-configs" style={{ marginRight: '1rem' }}>🧲 Banner Configs</Link>
           <Link to="/feature-banner-groups" style={{ marginRight: '1rem' }}>🎯 Feature Groups</Link>
           <Link to="/live-update-hub" style={{ marginRight: '1rem' }}>⚡ Live Update Hub</Link>
+          {/* Cartoons */}
+        <Link to="/cartoons/sections" style={{ marginRight: '1rem' }}>🎨 Cartoons</Link>
+        <Link to="/cartoons/entries"  style={{ marginRight: '1rem' }}>🖼️ Cartoon Entries</Link>
+
 
           {/* ✅ New single entry point for Cartoons */}
-          <Link to="/cartoon-hub" style={{ marginLeft: '1rem', fontWeight: 600 }}>🎭 Cartoon Hub</Link>
 
           <NavLink to="/sections" style={{ marginLeft: '1rem', fontWeight: 600 }}>🧭 Sections</NavLink>
         </nav>
@@ -337,13 +343,16 @@ function App() {
           <Route path="/banner-configs" element={<BannerConfigsPage />} />
           <Route path="/feature-banner-groups" element={<FeatureBannerGroupsManager />} />
 
-          {/* ✅ Cartoon Hub route */}
-          <Route path="/cartoon-hub" element={<CartoonHubManager />} />
 
           {/* Back-compat: old /cartoons* paths → /cartoon-hub */}
           <Route path="/cartoons" element={<Navigate to="/cartoon-hub" replace />} />
           <Route path="/cartoons/new" element={<Navigate to="/cartoon-hub" replace />} />
           <Route path="/cartoons/:id" element={<Navigate to="/cartoon-hub" replace />} />
+
+          <Route path="/cartoons/sections" element={<CartoonSections />} />
+          <Route path="/cartoons/sections/:id" element={<CartoonSectionEdit />} />
+          <Route path="/cartoons/entries" element={<Cartoons />} />
+          <Route path="/cartoons/entries/:id" element={<CartoonEdit />} />
 
           {/* Sections (existing) */}
           <Route path="/sections" element={<SectionsList />} />
