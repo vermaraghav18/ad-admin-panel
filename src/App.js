@@ -1,6 +1,6 @@
 // App.js
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, NavLink } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, NavLink, Navigate } from 'react-router-dom';
 import axios from 'axios';
 
 // Existing pages
@@ -28,7 +28,7 @@ import BannerConfigsPage from './pages/BannerConfigsPage';
 // ✅ NEW: Feature Banner Groups (grouped, category-scoped feature banners)
 import FeatureBannerGroupsManager from './pages/FeatureBannerGroupsManager';
 
-// ✅ NEW: Cartoon Hub (this replaces the old CartoonSectionsList/CartoonSectionEdit)
+// ✅ NEW: Cartoon Hub (unified manager)
 import CartoonHubManager from './pages/CartoonHubManager';
 
 import SectionsList from './pages/SectionsList';
@@ -276,9 +276,9 @@ function AdManager() {
                     <strong>Enabled:</strong> {String(ad.enabled ?? true)}
                   </div>
 
-                  <button style={{ marginTop: 12 }} onClick={() => handleDelete(id)}>
-                    ❌ Delete
-                  </button>
+                    <button style={{ marginTop: 12 }} onClick={() => handleDelete(id)}>
+                      ❌ Delete
+                    </button>
                 </div>
               </div>
             </div>
@@ -340,12 +340,17 @@ function App() {
           {/* ✅ Cartoon Hub route */}
           <Route path="/cartoon-hub" element={<CartoonHubManager />} />
 
+          {/* Back-compat: old /cartoons* paths → /cartoon-hub */}
+          <Route path="/cartoons" element={<Navigate to="/cartoon-hub" replace />} />
+          <Route path="/cartoons/new" element={<Navigate to="/cartoon-hub" replace />} />
+          <Route path="/cartoons/:id" element={<Navigate to="/cartoon-hub" replace />} />
+
           {/* Sections (existing) */}
           <Route path="/sections" element={<SectionsList />} />
           <Route path="/sections/new" element={<SectionEdit />} />
           <Route path="/sections/:id" element={<SectionEdit />} />
 
-          {/* Fallback */}
+          {/* Fallback – keep your previous default to Ads page */}
           <Route path="*" element={<AdManager />} />
         </Routes>
       </div>
