@@ -44,6 +44,9 @@ import SpotlightSectionEdit from './pages/SpotlightSectionEdit';
 import Spotlights from './pages/Spotlights';
 import SpotlightEdit from './pages/SpotlightEdit';
 
+import GeoAdManager from './pages/GeoAdManager';
+
+
 import './App.css';
 
 // ✅ API base (works whether your .env includes '/api' or not)
@@ -330,6 +333,9 @@ function App() {
           <Link to="/cartoons/sections" style={{ marginRight: '1rem' }}>🎨 Cartoons</Link>
           <Link to="/cartoons/entries" style={{ marginRight: '1rem' }}>🖼️ Cartoon Entries</Link>
 
+          <Link to="/geo-ads" style={{ marginRight: '1rem' }}>🌍 City/State Ads</Link>
+
+
           {/* Sections */}
           <NavLink to="/sections" style={{ marginLeft: '1rem', fontWeight: 600 }}>🧭 Sections</NavLink>
         </nav>
@@ -371,6 +377,9 @@ function App() {
           <Route path="/sections" element={<SectionsList />} />
           <Route path="/sections/new" element={<SectionEdit />} />
           <Route path="/sections/:id" element={<SectionEdit />} />
+
+          <Route path="/geo-ads" element={<GeoAdManager />} />
+
 
           {/* Fallback → Ads */}
           <Route path="*" element={<AdManager />} />
