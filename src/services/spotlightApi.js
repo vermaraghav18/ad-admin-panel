@@ -1,46 +1,49 @@
-// ad-admin-panel/src/services/spotlightApi.js
-const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:4000/spotlights';
+// src/services/spotlightApi.js
+const API_BASE = (process.env.REACT_APP_API_BASE || 'https://ad-server-qx62.onrender.com').replace(/\/$/, '');
 
-async function j(res) {
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+async function j(method, path, body) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`${method} ${path} -> ${res.status} ${text}`);
+  }
   return res.json();
 }
 
-export const SpotlightApi = {
-  // sections
-  listSections: () => fetch(`${API_BASE}/sections`).then(j),
-  getSection: (id) => fetch(`${API_BASE}/sections/${id}`).then(j),
-  createSection: (payload) =>
-    fetch(`${API_BASE}/sections`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    }).then(j),
-  updateSection: (id, payload) =>
-    fetch(`${API_BASE}/sections/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    }).then(j),
-  deleteSection: (id) =>
-    fetch(`${API_BASE}/sections/${id}`, { method: 'DELETE' }).then(j),
+/* ----------------------- Sections ----------------------- */
+export function listSpotlightSections() {
+  return j('GET', '/api/spotlights/sections');
+}
+export function getSpotlightSection(id) {
+  return j('GET', `/api/spotlights/sections/${id}`);
+}
+export function createSpotlightSection(payload) {
+  return j('POST', '/api/spotlights/sections', payload);
+}
+export function updateSpotlightSection(id, payload) {
+  return j('PUT', `/api/spotlights/sections/${id}`, payload);
+}
+export function deleteSpotlightSection(id) {
+  return j('DELETE', `/api/spotlights/sections/${id}`);
+}
 
-  // entries
-  listEntries: (sectionId) =>
-    fetch(`${API_BASE}/entries${sectionId ? `?sectionId=${sectionId}` : ''}`).then(j),
-  getEntry: (id) => fetch(`${API_BASE}/entries/${id}`).then(j),
-  createEntry: (payload) =>
-    fetch(`${API_BASE}/entries`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    }).then(j),
-  updateEntry: (id, payload) =>
-    fetch(`${API_BASE}/entries/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    }).then(j),
-  deleteEntry: (id) =>
-    fetch(`${API_BASE}/entries/${id}`, { method: 'DELETE' }).then(j),
-};
+/* ------------------------ Entries ----------------------- */
+export function listSpotlights() {
+  return j('GET', '/api/spotlights/entries');
+}
+export function getSpotlight(id) {
+  return j('GET', `/api/spotlights/entries/${id}`);
+}
+export function createSpotlight(payload) {
+  return j('POST', '/api/spotlights/entries', payload);
+}
+export function updateSpotlight(id, payload) {
+  return j('PUT', `/api/spotlights/entries/${id}`, payload);
+}
+export function deleteSpotlight(id) {
+  return j('DELETE', `/api/spotlights/entries/${id}`);
+}
