@@ -1,5 +1,6 @@
 // src/services/spotlightApi.js
-const API_BASE = (process.env.REACT_APP_API_BASE || 'https://ad-server-qx62.onrender.com').replace(/\/$/, '');
+const API_BASE = (process.env.REACT_APP_API_BASE || 'https://ad-server-qx62.onrender.com')
+  .replace(/\/+$/, '');
 
 async function j(method, path, body) {
   const res = await fetch(`${API_BASE}${path}`, {
@@ -48,17 +49,20 @@ export function deleteSpotlight(id) {
   return j('DELETE', `/api/spotlights/entries/${id}`);
 }
 
-/* ------- Default export for pages that do `import SpotlightApi ...` ---- */
-const SpotlightApi = {
-  listSpotlightSections,
-  getSpotlightSection,
-  createSpotlightSection,
-  updateSpotlightSection,
-  deleteSpotlightSection,
-  listSpotlights,
-  getSpotlight,
-  createSpotlight,
-  updateSpotlight,
-  deleteSpotlight,
+/* ------------- Convenience named + default -------------- */
+export const SpotlightApi = {
+  // sections
+  listSections: listSpotlightSections,
+  getSection: getSpotlightSection,
+  createSection: createSpotlightSection,
+  updateSection: updateSpotlightSection,
+  deleteSection: deleteSpotlightSection,
+  // entries
+  list: listSpotlights,
+  get: getSpotlight,
+  create: createSpotlight,
+  update: updateSpotlight,
+  delete: deleteSpotlight,
 };
+
 export default SpotlightApi;
