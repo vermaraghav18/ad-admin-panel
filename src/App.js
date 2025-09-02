@@ -46,6 +46,9 @@ import SpotlightEdit from './pages/SpotlightEdit';
 
 import GeoAdManager from './pages/GeoAdManager';
 
+import Spotlight2Sections from './pages/Spotlight2Sections';
+import Spotlight2Items from './pages/Spotlight2Items';
+
 
 import './App.css';
 
@@ -334,6 +337,7 @@ function App() {
           <Link to="/cartoons/entries" style={{ marginRight: '1rem' }}>🖼️ Cartoon Entries</Link>
 
           <Link to="/geo-ads" style={{ marginRight: '1rem' }}>🌍 City/State Ads</Link>
+          <Link to="/spotlight-2" style={{ marginRight: '1rem' }}>Spotlight-2</Link>
 
 
           {/* Sections */}
@@ -379,6 +383,8 @@ function App() {
           <Route path="/sections/:id" element={<SectionEdit />} />
 
           <Route path="/geo-ads" element={<GeoAdManager />} />
+          <Route path="/spotlight-2" element={<Spotlight2Sections />} />
+          <Route path="/spotlight-2/:sectionId/items" element={<Spotlight2Items />} />
 
 
           {/* Fallback → Ads */}
