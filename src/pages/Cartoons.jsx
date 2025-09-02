@@ -10,11 +10,12 @@ export default function Cartoons() {
 
   const load = async () => {
     const [r, s] = await Promise.all([
-      CartoonApi.getEntries(sectionId),
-      CartoonApi.getSections(),
-    ]);
-    setRows(r);
-    setSections(s);
+  CartoonApi.getEntries(sectionId),
+  CartoonApi.getSections(),
+]);
+setRows(Array.isArray(r) ? r : []);
+setSections(Array.isArray(s) ? s : []);
+
   };
 
   useEffect(() => { load(); }, [sectionId]);
@@ -41,7 +42,7 @@ export default function Cartoons() {
           </tr>
         </thead>
         <tbody>
-          {rows.map(e=>(
+          {Array.isArray(rows) && rows.map((e) => (
             <tr key={e._id}>
               <td>{e.title}</td>
               <td>{secName(e.sectionId)}</td>

@@ -9,7 +9,8 @@ export default function CartoonSections() {
   const load = async () => {
     setLoading(true);
     const data = await CartoonApi.getSections();
-    setRows(data);
+    setRows(Array.isArray(data) ? data : []);
+
     setLoading(false);
   };
 
@@ -37,7 +38,7 @@ export default function CartoonSections() {
             </tr>
           </thead>
           <tbody>
-            {rows.map(s => (
+            {Array.isArray(rows) && rows.map((s) => (
               <tr key={s._id}>
                 <td>{s.title}</td>
                 <td>{s.scopeType}{s.scopeType!=='global' ? `:${s.scopeValue}` : ''}</td>
