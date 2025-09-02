@@ -38,7 +38,7 @@ import CartoonEdit from './pages/CartoonEdit';
 import SectionsList from './pages/SectionsList';
 import SectionEdit from './pages/SectionEdit';
 
-// ✅ Spotlight (Daily News)
+// ✅ Spotlight (Daily News) — keep only these four
 import SpotlightSections from './pages/SpotlightSections';
 import SpotlightSectionEdit from './pages/SpotlightSectionEdit';
 import Spotlights from './pages/Spotlights';
@@ -353,12 +353,13 @@ function App() {
           <Route path="/feature-banner-groups" element={<FeatureBannerGroupsManager />} />
 
           {/* ✅ Spotlight routes */}
+          <Route path="/spotlights" element={<Spotlights />} />
+          <Route path="/spotlights/entries" element={<Spotlights />} /> {/* supports your nav link */}
+          <Route path="/spotlights/new" element={<SpotlightEdit />} />
+          <Route path="/spotlights/:id" element={<SpotlightEdit />} />
           <Route path="/spotlights/sections" element={<SpotlightSections />} />
           <Route path="/spotlights/sections/new" element={<SpotlightSectionEdit />} />
           <Route path="/spotlights/sections/:id" element={<SpotlightSectionEdit />} />
-          <Route path="/spotlights/entries" element={<Spotlights />} />
-          <Route path="/spotlights/entries/new" element={<SpotlightEdit />} />
-          <Route path="/spotlights/entries/:id" element={<SpotlightEdit />} />
 
           {/* Cartoons */}
           <Route path="/cartoons/sections" element={<CartoonSections />} />

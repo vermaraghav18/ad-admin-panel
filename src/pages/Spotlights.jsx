@@ -1,75 +1,66 @@
-// ad-admin-panel/src/pages/Spotlights.jsx
-import React, { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { SpotlightApi } from '../services/spotlightApi';
-
-function useQuery() {
-  const { search } = useLocation();
-  return React.useMemo(() => new URLSearchParams(search), [search]);
-}
+// src/pages/Spotlights.jsx
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import SpotlightApi from '../services/spotlightApi';
 
 export default function Spotlights() {
-  const q = useQuery();
-  const initialSectionId = q.get('sectionId') || '';
-  const [sections, setSections] = useState([]);
-  const [sectionId, setSectionId] = useState(initialSectionId);
+  const [params] = useSearchParams();
+  const sectionId = params.get('sectionId');
   const [rows, setRows] = useState([]);
+  const [sections, setSections] = useState([]);
 
-  const load = async (sid = sectionId) => {
-    const s = await SpotlightApi.listSections();
-    setSections(s);
-    setRows(await SpotlightApi.listEntries(sid ? { sectionId: sid } : {}));
+  const query = useMemo(() => (sectionId ? { sectionId } : {}), [sectionId]);
 
+  const refresh = async () => {
+    try {
+      const [es, ss] = await Promise.all([
+        SpotlightApi.listEntries(query),
+        SpotlightApi.listSections(),
+      ]);
+      setRows(es);
+      setSections(ss);
+    } catch (e) {
+      alert(e.message);
+    }
   };
 
-  useEffect(() => { load(); }, []);
-  useEffect(() => { load(sectionId); }, [sectionId]);
+  useEffect(() => { refresh(); }, [sectionId]);
 
-  const del = async (id) => {
-    if (!window.confirm('Delete entry?')) return;
+  const onDelete = async (id) => {
+    if (!window.confirm('Delete this entry?')) return;
     await SpotlightApi.deleteEntry(id);
-    load(sectionId);
+    refresh();
   };
+
+  const name = id => sections.find(s => s._id === id)?.title || '—';
 
   return (
-    <div className="page">
+    <div className="container">
       <h2>Spotlight Entries</h2>
-
-      <div className="row">
-        <label>Section</label>
-        <select value={sectionId} onChange={e => setSectionId(e.target.value)}>
-          <option value="">(All)</option>
-          {sections.map(s => <option key={s._id} value={s._id}>{s.title} — {s.sectionType}:{s.sectionValue}</option>)}
-        </select>
-        <Link to="/spotlights/entries/new" style={{ marginLeft: 12 }}>+ New Entry</Link>
+      <div style={{ marginBottom: 12 }}>
+        <Link className="btn btn-primary" to={`/spotlights/new${sectionId ? `?sectionId=${sectionId}` : ''}`}>
+          + New Entry
+        </Link>
       </div>
-
-      <table className="tbl">
+      <table className="table">
         <thead>
           <tr>
-            <th>Title</th>
-            <th>Section</th>
-            <th>Status</th>
-            <th>Order</th>
-            <th>Variants</th>
-            <th></th>
+            <th>Section</th><th>Title</th><th>Enabled</th><th>Updated</th><th></th>
           </tr>
         </thead>
         <tbody>
           {rows.map(r => (
             <tr key={r._id}>
+              <td>{name(r.sectionId)}</td>
               <td>{r.title}</td>
-              <td>{sections.find(s => s._id === r.sectionId)?.title || '—'}</td>
-              <td>{r.enabled ? 'live' : 'off'}</td>
-              <td>{r.order}</td>
-              <td>{(r.variants || []).map(v => v.aspect).join(', ') || '-'}</td>
+              <td>{r.enabled ? 'Yes' : 'No'}</td>
+              <td>{new Date(r.updatedAt).toLocaleString()}</td>
               <td>
-                <Link to={`/spotlights/entries/${r._id}`}>Edit</Link>{' '}
-                <button className="danger" onClick={() => del(r._id)}>Delete</button>
+                <Link to={`/spotlights/${r._id}`} className="btn btn-sm btn-outline-secondary">Edit</Link>{' '}
+                <button className="btn btn-sm btn-outline-danger" onClick={() => onDelete(r._id)}>Delete</button>
               </td>
             </tr>
           ))}
-          {rows.length === 0 && <tr><td colSpan="6">No entries yet.</td></tr>}
         </tbody>
       </table>
     </div>
