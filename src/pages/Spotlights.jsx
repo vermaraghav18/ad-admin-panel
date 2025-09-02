@@ -18,7 +18,8 @@ export default function Spotlights() {
   const load = async (sid = sectionId) => {
     const s = await SpotlightApi.listSections();
     setSections(s);
-    setRows(await SpotlightApi.listEntries(sid || undefined));
+    setRows(await SpotlightApi.listEntries(sid ? { sectionId: sid } : {}));
+
   };
 
   useEffect(() => { load(); }, []);

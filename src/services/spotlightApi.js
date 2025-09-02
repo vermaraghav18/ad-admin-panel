@@ -1,107 +1,90 @@
 // src/services/spotlightApi.js
 import axios from 'axios';
 
-/**
- * Build a stable ROOT so calls always hit `${ROOT}/api/spotlights/...`
- * Works locally and on Render/Vercel.
- */
 const ROOT = (process.env.REACT_APP_API_BASE || 'https://ad-server-qx62.onrender.com')
-  .replace(/\/+$/, '')      // strip trailing slash(es)
-  .replace(/\/api$/, '');   // strip a trailing /api if present (we add it below)
+  .replace(/\/+$/, '')
+  .replace(/\/api$/, '');
 
 const api = axios.create({
   baseURL: `${ROOT}/api/spotlights`,
-  // withCredentials: true, // enable if you add auth/cookies later
+  headers: { 'Content-Type': 'application/json' },
 });
 
-/* ---------------------------- helpers ---------------------------- */
-function idOf(obj) {
-  return obj && (obj._id || obj.id);
-}
-
-async function request(promise) {
+const unwrap = async (p) => {
   try {
-    const { data } = await promise;
+    const { data } = await p;
     return data;
   } catch (err) {
-    // Surface a helpful error for the UI/console
     const msg =
-      err?.response?.data?.error ||
       err?.response?.data?.message ||
+      err?.response?.data?.error ||
       err?.message ||
-      String(err);
-    console.error('[SpotlightApi] request failed:', msg, err?.response || '');
+      'Request failed';
     throw new Error(msg);
   }
-}
-
-/* ------------------------------ API ------------------------------ */
-const SpotlightApi = {
-  // -------- Sections --------
-  listSections(params = {}) {
-    // params: { scope?, city?, state? }
-    return request(api.get('/sections', { params }));
-  },
-
-  getSection(id) {
-    return request(api.get(`/sections/${id}`));
-  },
-
-  upsertSection(section) {
-    const id = idOf(section);
-    return id
-      ? request(api.put(`/sections/${id}`, section))
-      : request(api.post('/sections', section));
-  },
-
-  deleteSection(id) {
-    return request(api.delete(`/sections/${id}`));
-  },
-
-  // -------- Entries --------
-  listEntries(params = {}) {
-    // params: { sectionId?, status? ('live' | 'dead'), page?, limit? }
-    return request(api.get('/entries', { params }));
-  },
-
-  getEntry(id) {
-    return request(api.get(`/entries/${id}`));
-  },
-
-  createEntry(entry) {
-    return request(api.post('/entries', entry));
-  },
-
-  upsertEntry(entry) {
-    const id = idOf(entry);
-    return id
-      ? request(api.put(`/entries/${id}`, entry))
-      : request(api.post('/entries', entry));
-  },
-
-  deleteEntry(id) {
-    return request(api.delete(`/entries/${id}`));
-  },
 };
 
-/* --------------------------- exports ----------------------------- */
-// Default export (recommended): import SpotlightApi from '../services/spotlightApi'
+const normalizeParams = (p) => {
+  if (!p) return {};
+  if (typeof p === 'string') return { sectionId: p };
+  return p;
+};
+
+// Fallback helper: try PATCH first, then PUT (covers different backends)
+const patchThenPut = async (url, body) => {
+  try {
+    const { data } = await api.patch(url, body);
+    return data;
+  } catch (e) {
+    // On method mismatch (405/404/etc), try PUT
+    try {
+      const { data } = await api.put(url, body);
+      return data;
+    } catch (e2) {
+      const msg =
+        e2?.response?.data?.message ||
+        e2?.response?.data?.error ||
+        e2?.message ||
+        'Request failed';
+      throw new Error(msg);
+    }
+  }
+};
+
+/* ---------------- Sections ---------------- */
+const listSections   = (params = {})        => unwrap(api.get('/sections', { params }));
+const getSection     = (id)                 => unwrap(api.get(`/sections/${id}`));
+const createSection  = (body)               => unwrap(api.post('/sections', body));
+const updateSection  = (id, body)           => patchThenPut(`/sections/${id}`, body);
+const deleteSection  = (id)                 => unwrap(api.delete(`/sections/${id}`));
+// keep upsert for callers that used it
+const upsertSection  = (section) => {
+  const id = section?._id || section?.id;
+  return id ? updateSection(id, section) : createSection(section);
+};
+
+/* ---------------- Entries ----------------- */
+const listEntries    = (params)             => unwrap(api.get('/entries', { params: normalizeParams(params) }));
+const getEntry       = (id)                 => unwrap(api.get(`/entries/${id}`));
+const createEntry    = (body)               => unwrap(api.post('/entries', body));
+const updateEntry    = (id, body)           => patchThenPut(`/entries/${id}`, body);
+const deleteEntry    = (id)                 => unwrap(api.delete(`/entries/${id}`));
+const upsertEntry    = (entry) => {
+  const id = entry?._id || entry?.id;
+  return id ? updateEntry(id, entry) : createEntry(entry);
+};
+
+/* --------------- Exports ------------------ */
+export {
+  listSections, getSection, createSection, updateSection, deleteSection, upsertSection,
+  listEntries,  getEntry,  createEntry,  updateEntry,  deleteEntry,  upsertEntry,
+};
+
+const SpotlightApi = {
+  listSections, getSection, createSection, updateSection, deleteSection, upsertSection,
+  listEntries,  getEntry,  createEntry,  updateEntry,  deleteEntry,  upsertEntry,
+};
 export default SpotlightApi;
 
-// Named export (for compatibility): import { SpotlightApi } from '../services/spotlightApi'
-export { SpotlightApi };
-
-// Optional extra named exports if you like calling functions directly:
-export const listSections   = (...a) => SpotlightApi.listSections(...a);
-export const getSection     = (...a) => SpotlightApi.getSection(...a);
-export const upsertSection  = (...a) => SpotlightApi.upsertSection(...a);
-export const deleteSection  = (...a) => SpotlightApi.deleteSection(...a);
-
-export const listEntries    = (...a) => SpotlightApi.listEntries(...a);
-export const getEntry       = (...a) => SpotlightApi.getEntry(...a);
-export const createEntry    = (...a) => SpotlightApi.createEntry(...a);
-export const upsertEntry    = (...a) => SpotlightApi.upsertEntry(...a);
-export const deleteEntry    = (...a) => SpotlightApi.deleteEntry(...a);
-
-// Axios instance export (handy for debugging in dev tools)
-export const __spotlightAxiosInstance = api;
+// (optional) export axios instance for debugging:
+// export const __spotlightAxiosInstance = api;
