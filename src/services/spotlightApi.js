@@ -47,3 +47,18 @@ export function updateSpotlight(id, payload) {
 export function deleteSpotlight(id) {
   return j('DELETE', `/api/spotlights/entries/${id}`);
 }
+
+/* ------- Default export for pages that do `import SpotlightApi ...` ---- */
+const SpotlightApi = {
+  listSpotlightSections,
+  getSpotlightSection,
+  createSpotlightSection,
+  updateSpotlightSection,
+  deleteSpotlightSection,
+  listSpotlights,
+  getSpotlight,
+  createSpotlight,
+  updateSpotlight,
+  deleteSpotlight,
+};
+export default SpotlightApi;
