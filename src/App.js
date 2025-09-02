@@ -1,6 +1,6 @@
 // App.js
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, NavLink, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, NavLink } from 'react-router-dom';
 import axios from 'axios';
 
 // Existing pages
@@ -19,28 +19,37 @@ import BannerManagerPage from './pages/BannerManagerPage';
 import SmallAdsManager from './pages/SmallAdsManager';
 import NewsHubManager from './pages/NewsHubManager';
 
-// ✅ NEW: X Feeds admin (single-page manager)
+// ✅ NEW: X Feeds admin
 import XFeedsManager from './pages/XFeedsManager';
 
-// ✅ NEW: Banner Configs (article-anchored injections)
+// ✅ NEW: Banner Configs
 import BannerConfigsPage from './pages/BannerConfigsPage';
 
-// ✅ NEW: Feature Banner Groups (grouped, category-scoped feature banners)
+// ✅ NEW: Feature Banner Groups
 import FeatureBannerGroupsManager from './pages/FeatureBannerGroupsManager';
 
-// in src/App.js (add routes somewhere in your <Routes/> / hash-router switch)
+// ✅ Cartoons
 import CartoonSections from './pages/CartoonSections';
 import CartoonSectionEdit from './pages/CartoonSectionEdit';
 import Cartoons from './pages/Cartoons';
 import CartoonEdit from './pages/CartoonEdit';
 
+// ✅ Sections
 import SectionsList from './pages/SectionsList';
 import SectionEdit from './pages/SectionEdit';
 
+// ✅ Spotlight (Daily News)
+import SpotlightSections from './pages/SpotlightSections';
+import SpotlightSectionEdit from './pages/SpotlightSectionEdit';
+import Spotlights from './pages/Spotlights';
+import SpotlightEdit from './pages/SpotlightEdit';
+
 import './App.css';
 
-// ✅ Centralized API base (env first, then Render fallback) with trailing-slash normalization
-const API_BASE = (process.env.REACT_APP_API_BASE || 'https://ad-server-qx62.onrender.com').replace(/\/$/, '');
+// ✅ API base (works whether your .env includes '/api' or not)
+const API_BASE = (process.env.REACT_APP_API_BASE || 'https://ad-server-qx62.onrender.com')
+  .replace(/\/+$/, '')
+  .replace(/\/api$/, ''); // strip trailing /api if present, so `${API_BASE}/api/...` is always correct
 
 function AdManager() {
   const [ads, setAds] = useState([]);
@@ -50,12 +59,10 @@ function AdManager() {
   const [target, setTarget] = useState('All');
   const [description, setDescription] = useState('');
   const [type, setType] = useState('normal');
-  const [placement, setPlacement] = useState('swipeOnly'); // 🆕 placement (swipeOnly|both)
-  // 🆕 Scheduling (non-negative ints)
+  const [placement, setPlacement] = useState('swipeOnly'); // (swipeOnly|both)
   const [afterNth, setAfterNth] = useState(0);
   const [repeatEvery, setRepeatEvery] = useState(0);
   const [repeatCount, setRepeatCount] = useState(0);
-
   const [loading, setLoading] = useState(false);
 
   const newsCategories = [
@@ -78,7 +85,6 @@ function AdManager() {
   const handleUpload = async (e) => {
     e.preventDefault();
     const isFullPage = type === 'fullpage';
-
     if (!image || !link || (!isFullPage && (!title || !description))) {
       return alert('All required fields must be filled');
     }
@@ -279,9 +285,9 @@ function AdManager() {
                     <strong>Enabled:</strong> {String(ad.enabled ?? true)}
                   </div>
 
-                    <button style={{ marginTop: 12 }} onClick={() => handleDelete(id)}>
-                      ❌ Delete
-                    </button>
+                  <button style={{ marginTop: 12 }} onClick={() => handleDelete(id)}>
+                    ❌ Delete
+                  </button>
                 </div>
               </div>
             </div>
@@ -315,13 +321,16 @@ function App() {
           <Link to="/banner-configs" style={{ marginRight: '1rem' }}>🧲 Banner Configs</Link>
           <Link to="/feature-banner-groups" style={{ marginRight: '1rem' }}>🎯 Feature Groups</Link>
           <Link to="/live-update-hub" style={{ marginRight: '1rem' }}>⚡ Live Update Hub</Link>
-          {/* Cartoons */}
-        <Link to="/cartoons/sections" style={{ marginRight: '1rem' }}>🎨 Cartoons</Link>
-<Link to="/cartoons/entries"  style={{ marginRight: '1rem' }}>🖼️ Cartoon Entries</Link>
 
+          {/* ✅ Spotlight (Daily News) */}
+          <Link to="/spotlights/sections" style={{ marginRight: '1rem' }}>🌟 Spotlight Sections</Link>
+          <Link to="/spotlights/entries" style={{ marginRight: '1rem' }}>🌟 Spotlight Entries</Link>
 
-          {/* ✅ New single entry point for Cartoons */}
+          {/* ✅ Cartoons */}
+          <Link to="/cartoons/sections" style={{ marginRight: '1rem' }}>🎨 Cartoons</Link>
+          <Link to="/cartoons/entries" style={{ marginRight: '1rem' }}>🖼️ Cartoon Entries</Link>
 
+          {/* Sections */}
           <NavLink to="/sections" style={{ marginLeft: '1rem', fontWeight: 600 }}>🧭 Sections</NavLink>
         </nav>
 
@@ -343,19 +352,26 @@ function App() {
           <Route path="/banner-configs" element={<BannerConfigsPage />} />
           <Route path="/feature-banner-groups" element={<FeatureBannerGroupsManager />} />
 
+          {/* ✅ Spotlight routes */}
+          <Route path="/spotlights/sections" element={<SpotlightSections />} />
+          <Route path="/spotlights/sections/new" element={<SpotlightSectionEdit />} />
+          <Route path="/spotlights/sections/:id" element={<SpotlightSectionEdit />} />
+          <Route path="/spotlights/entries" element={<Spotlights />} />
+          <Route path="/spotlights/entries/new" element={<SpotlightEdit />} />
+          <Route path="/spotlights/entries/:id" element={<SpotlightEdit />} />
 
-          {/* Back-compat: old /cartoons* paths → /cartoon-hub */}
+          {/* Cartoons */}
           <Route path="/cartoons/sections" element={<CartoonSections />} />
-<Route path="/cartoons/sections/:id" element={<CartoonSectionEdit />} />
-<Route path="/cartoons/entries" element={<Cartoons />} />
-<Route path="/cartoons/entries/:id" element={<CartoonEdit />} />
+          <Route path="/cartoons/sections/:id" element={<CartoonSectionEdit />} />
+          <Route path="/cartoons/entries" element={<Cartoons />} />
+          <Route path="/cartoons/entries/:id" element={<CartoonEdit />} />
 
-          {/* Sections (existing) */}
+          {/* Sections */}
           <Route path="/sections" element={<SectionsList />} />
           <Route path="/sections/new" element={<SectionEdit />} />
           <Route path="/sections/:id" element={<SectionEdit />} />
 
-          {/* Fallback – keep your previous default to Ads page */}
+          {/* Fallback → Ads */}
           <Route path="*" element={<AdManager />} />
         </Routes>
       </div>
