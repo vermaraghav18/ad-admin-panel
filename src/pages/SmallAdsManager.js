@@ -15,6 +15,11 @@ export default function SmallAdsManager() {
   const [placementIndex, setPlacementIndex] = useState('');
   const [targetUrl, setTargetUrl] = useState('');
   const [enabled, setEnabled] = useState(true);
+
+  // 🔽 NEW
+  const [repeatEvery, setRepeatEvery] = useState(''); // cards between repeats (0/empty = no repeat)
+  const [repeatCount, setRepeatCount] = useState(''); // how many times to repeat (0/empty = no repeat)
+
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -39,18 +44,27 @@ export default function SmallAdsManager() {
   const onSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
     if (!file) return setError('Please choose an image or an MP4 video.');
     if (!(file.type.startsWith('image/') || file.type === 'video/mp4')) {
       return setError('Only images and MP4 videos are supported.');
     }
+
     const n = parseInt(String(placementIndex), 10);
     if (!n || n < 1) return setError('Enter a valid placement index (>= 1).');
+
+    // 🔽 NEW: normalize numbers; empty/NaN -> 0
+    const rEvery = Math.max(0, parseInt(String(repeatEvery), 10) || 0);
+    const rCount = Math.max(0, parseInt(String(repeatCount), 10) || 0);
 
     const fd = new FormData();
     fd.append('media', file);
     fd.append('placementIndex', String(n));
     fd.append('targetUrl', targetUrl.trim());
     fd.append('enabled', String(enabled));
+    // 🔽 NEW: include in payload
+    fd.append('repeatEvery', String(rEvery));
+    fd.append('repeatCount', String(rCount));
 
     try {
       setBusy(true);
@@ -59,6 +73,9 @@ export default function SmallAdsManager() {
       setPlacementIndex('');
       setTargetUrl('');
       setEnabled(true);
+      // 🔽 NEW: reset fields
+      setRepeatEvery('');
+      setRepeatCount('');
       await fetchAll();
     } catch (err) {
       console.error('❌ upload small ad failed:', err?.response?.data || err);
@@ -89,6 +106,7 @@ export default function SmallAdsManager() {
           onChange={(e) => setFile(e.target.files?.[0] || null)}
           className="p-2 bg-gray-700"
         />
+
         <input
           className="p-2 bg-gray-700 w-32"
           placeholder="Placement (e.g. 5)"
@@ -97,12 +115,32 @@ export default function SmallAdsManager() {
           type="number"
           min={1}
         />
+
+        {/* 🔽 NEW inputs */}
+        <input
+          className="p-2 bg-gray-700 w-40"
+          placeholder="Repeat every (cards)"
+          value={repeatEvery}
+          onChange={(e) => setRepeatEvery(e.target.value)}
+          type="number"
+          min={0}
+        />
+        <input
+          className="p-2 bg-gray-700 w-36"
+          placeholder="Repeat count"
+          value={repeatCount}
+          onChange={(e) => setRepeatCount(e.target.value)}
+          type="number"
+          min={0}
+        />
+
         <input
           className="p-2 bg-gray-700 min-w-[280px]"
           placeholder="Target URL (optional)"
           value={targetUrl}
           onChange={(e) => setTargetUrl(e.target.value)}
         />
+
         <label className="flex items-center gap-2">
           <input
             type="checkbox"
@@ -111,6 +149,7 @@ export default function SmallAdsManager() {
           />
           Enabled
         </label>
+
         <button disabled={busy} className="bg-blue-500 px-4 py-2 rounded">
           {busy ? 'Uploading…' : 'Add'}
         </button>
@@ -141,9 +180,19 @@ export default function SmallAdsManager() {
             </div>
             <div className="mb-2">
               {it.mediaType === 'video' ? (
-                <video src={it.mediaUrl?.startsWith('http') ? it.mediaUrl : `${API_BASE}${it.mediaUrl}`} controls muted playsInline className="rounded" />
+                <video
+                  src={it.mediaUrl?.startsWith('http') ? it.mediaUrl : `${API_BASE}${it.mediaUrl}`}
+                  controls
+                  muted
+                  playsInline
+                  className="rounded"
+                />
               ) : (
-                <img src={it.mediaUrl?.startsWith('http') ? it.mediaUrl : `${API_BASE}${it.mediaUrl}`} alt="ad" className="rounded" />
+                <img
+                  src={it.mediaUrl?.startsWith('http') ? it.mediaUrl : `${API_BASE}${it.mediaUrl}`}
+                  alt="ad"
+                  className="rounded"
+                />
               )}
             </div>
             {it.targetUrl && (
