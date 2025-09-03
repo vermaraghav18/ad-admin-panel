@@ -20,7 +20,7 @@ function GeoAdManager() {
   const [loading, setLoading] = useState(false);
 
   const availableCities = ['Bengaluru', 'Mumbai', 'Delhi', 'Chennai', 'Hyderabad'];
-  const availableStates = ['Karnataka', 'Maharashtra', 'Delhi', 'Tamil Nadu', 'Telangana'];
+  const availableStates = ['Karnataka', 'Maharashtra', 'Delhi', 'Tamil Nadu', 'Telangana','West Bengal'];
 
   useEffect(() => {
     fetchAds();
