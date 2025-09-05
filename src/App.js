@@ -49,6 +49,12 @@ import GeoAdManager from './pages/GeoAdManager';
 import Spotlight2Sections from './pages/Spotlight2Sections';
 import Spotlight2Items from './pages/Spotlight2Items';
 
+import VideoSectionsList from './pages/videos/VideoSectionsList';
+import VideoSectionForm from './pages/videos/VideoSectionForm';
+import VideoEntriesList from './pages/videos/VideoEntriesList';
+import VideoEntryForm from './pages/videos/VideoEntryForm';
+import VideoPlanPreview from './pages/videos/VideoPlanPreview';
+
 
 import './App.css';
 
@@ -339,6 +345,10 @@ function App() {
           <Link to="/geo-ads" style={{ marginRight: '1rem' }}>🌍 City/State Ads</Link>
           <Link to="/spotlight-2" style={{ marginRight: '1rem' }}>Spotlight-2</Link>
 
+        {/* ✅ Videos */}
+      <Link to="/admin/videos/sections" style={{ marginRight: '1rem' }}>🎥 Video Sections</Link>
+      <Link to="/admin/videos/plan-preview" style={{ marginRight: '1rem' }}>🧩 Video Plan</Link>
+
 
           {/* Sections */}
           <NavLink to="/sections" style={{ marginLeft: '1rem', fontWeight: 600 }}>🧭 Sections</NavLink>
@@ -385,6 +395,14 @@ function App() {
           <Route path="/geo-ads" element={<GeoAdManager />} />
           <Route path="/spotlight-2" element={<Spotlight2Sections />} />
           <Route path="/spotlight-2/:sectionId/items" element={<Spotlight2Items />} />
+
+            <Route path="/admin/videos/sections" element={<VideoSectionsList />} />
+            <Route path="/admin/videos/sections/new" element={<VideoSectionForm />} />
+            <Route path="/admin/videos/sections/:id/edit" element={<VideoSectionForm />} />
+            <Route path="/admin/videos/sections/:id/entries" element={<VideoEntriesList />} />
+            <Route path="/admin/videos/sections/:id/entries/new" element={<VideoEntryForm />} />
+            <Route path="/admin/videos/entries/:id/edit" element={<VideoEntryForm />} />
+            <Route path="/admin/videos/plan-preview" element={<VideoPlanPreview />} />
 
 
           {/* Fallback → Ads */}
