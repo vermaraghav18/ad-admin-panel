@@ -54,6 +54,8 @@ import VideoSectionForm from './pages/videos/VideoSectionForm';
 import VideoEntriesList from './pages/videos/VideoEntriesList';
 import VideoEntryForm from './pages/videos/VideoEntryForm';
 import VideoPlanPreview from './pages/videos/VideoPlanPreview';
+import VideoGeoAdsManager from './pages/VideoGeoAdsManager';
+
 
 
 import './App.css';
@@ -349,6 +351,9 @@ function App() {
       <Link to="/admin/videos/sections" style={{ marginRight: '1rem' }}>🎥 Video Sections</Link>
       <Link to="/admin/videos/plan-preview" style={{ marginRight: '1rem' }}>🧩 Video Plan</Link>
 
+      <Link to="/video-geo-ads" style={{ marginRight: '1rem' }}>🎥 Video Geo Ads</Link>
+
+
 
           {/* Sections */}
           <NavLink to="/sections" style={{ marginLeft: '1rem', fontWeight: 600 }}>🧭 Sections</NavLink>
@@ -403,6 +408,8 @@ function App() {
             <Route path="/admin/videos/sections/:id/entries/new" element={<VideoEntryForm />} />
             <Route path="/admin/videos/entries/:id/edit" element={<VideoEntryForm />} />
             <Route path="/admin/videos/plan-preview" element={<VideoPlanPreview />} />
+            <Route path="/video-geo-ads" element={<VideoGeoAdsManager />} />
+
 
 
           {/* Fallback → Ads */}
