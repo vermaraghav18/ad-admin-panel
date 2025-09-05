@@ -33,16 +33,23 @@ const initial = (sectionId) => ({
 });
 
 export default function VideoEntryForm() {
-  const { id } = useParams(); // entry id when editing, or undefined when creating
+  // IMPORTANT:
+  // - Create route: /admin/videos/sections/:id/entries/new   -> :id is SECTION ID
+  // - Edit route:   /admin/videos/entries/:id/edit?sectionId=... -> :id is ENTRY ID
+  const { id } = useParams();
+  const location = useLocation();
   const q = useQuery();
   const nav = useNavigate();
-  const sectionId = q.get('sectionId') || ''; // required to fetch in edit mode
-  const creating = !id;
+
+  const creating = location.pathname.endsWith('/new'); // true on create screen
+  const sectionId = creating ? id : (q.get('sectionId') || ''); // sectionId from route (create) or query (edit)
+  const entryId = creating ? '' : id; // entry id only on edit
 
   const [seed, setSeed] = useState(initial(sectionId));
   const [section, setSection] = useState(null);
-  const [loading, setLoading] = useState(!creating);
+  const [loading, setLoading] = useState(!creating); // only load on edit
 
+  // Load section meta (for header) when we know the sectionId
   useEffect(() => {
     const run = async () => {
       if (!sectionId) return;
@@ -52,13 +59,16 @@ export default function VideoEntryForm() {
     run();
   }, [sectionId]);
 
+  // Load existing entry when editing
   useEffect(() => {
     const load = async () => {
       if (creating) return;
+      if (!sectionId || !entryId) return; // we need both to find the entry
       setLoading(true);
-      // No GET /entries/:id endpoint, so we fetch by section and find locally
+
+      // No GET /entries/:id endpoint, so fetch entries in this section and find the matching one
       const list = await listEntries(sectionId);
-      const e = (list || []).find(x => x._id === id);
+      const e = (list || []).find(x => x._id === entryId);
       if (e) {
         setSeed({
           sectionId: e.sectionId,
@@ -89,10 +99,17 @@ export default function VideoEntryForm() {
       setLoading(false);
     };
     load();
-  }, [creating, id, sectionId]);
+  }, [creating, sectionId, entryId]);
 
-  const onSubmit = async (values, { setSubmitting }) => {
+  const onSubmit = async (values, { setSubmitting, setFieldTouched }) => {
     try {
+      // Minimal guard to avoid silent non-submit if sectionId missing (shouldn’t happen now)
+      if (!values.sectionId) {
+        setFieldTouched('sectionId', true, false);
+        setSubmitting(false);
+        return;
+      }
+
       const payload = {
         ...values,
         // ensure arrays are arrays
@@ -106,10 +123,11 @@ export default function VideoEntryForm() {
         publishedAt: values.publishedAt ? new Date(values.publishedAt).toISOString() : null,
         expiresAt: values.expiresAt ? new Date(values.expiresAt).toISOString() : null,
       };
+
       if (creating) {
         await createEntry(payload);
       } else {
-        await updateEntry(id, payload);
+        await updateEntry(entryId, payload);
       }
       nav(`/admin/videos/sections/${values.sectionId}/entries`);
     } finally {
@@ -146,7 +164,7 @@ export default function VideoEntryForm() {
           <Form className="form">
             <div>
               <label>sectionId *</label>
-              <Field name="sectionId" />
+              <Field name="sectionId" readOnly />
               {touched.sectionId && errors.sectionId && <div className="error">{errors.sectionId}</div>}
             </div>
 
