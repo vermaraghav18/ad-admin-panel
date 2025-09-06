@@ -19,8 +19,8 @@ function GeoAdManager() {
   const [repeatCount, setRepeatCount] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const availableCities = ['Top News','Bengaluru', 'Mumbai', 'Delhi', 'Chennai', 'Hyderabad'];
-  const availableStates = ['Top News','Karnataka', 'Maharashtra', 'Delhi', 'Tamil Nadu', 'Telangana','West Bengal'];
+  const availableCities = ['Top News','Bengaluru', 'Mumbai', 'Delhi', 'Chennai', 'Hyderabad','Jalandhar'];
+  const availableStates = ['Top News','Karnataka', 'Maharashtra', 'Delhi', 'Tamil Nadu', 'Telangana','West Bengal','Punjab'];
 
   useEffect(() => {
     fetchAds();
